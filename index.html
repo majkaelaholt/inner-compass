@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#8f6a74" />
+  <meta name="description" content="A private, guided self-awareness app for naming emotions, finding wants, reflecting on reactions, and learning your patterns." />
+  <title>Inner Compass</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div>
+          <div class="brand-name">Inner Compass</div>
+          <div class="brand-subtitle">Notice. Name. Learn.</div>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-item active" data-screen="home"><span>⌂</span> Home</button>
+        <button class="nav-item" data-screen="tools"><span>◇</span> Guided tools</button>
+        <button class="nav-item" data-screen="insights"><span>⌁</span> Insights</button>
+        <button class="nav-item" data-screen="history"><span>☷</span> History</button>
+        <button class="nav-item" data-screen="settings"><span>⚙</span> Settings</button>
+      </nav>
+
+      <div class="privacy-note">
+        <strong>Private by default</strong>
+        <span>Your entries stay in this browser unless you export them.</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="screenEyebrow">Today</p>
+          <h1 id="screenTitle">Come back to yourself</h1>
+        </div>
+        <button class="icon-button" id="quickCheckin" aria-label="Start a quick check-in">＋</button>
+      </header>
+
+      <section class="screen active" id="screen-home">
+        <div class="hero-card">
+          <div class="hero-copy">
+            <span class="soft-label">A two-minute pause</span>
+            <h2>What is happening inside you?</h2>
+            <p>You do not need the perfect answer. Start with what you notice, and let the app help you narrow it down.</p>
+            <div class="hero-actions">
+              <button class="primary-button" data-start-tool="emotion">Find my feeling</button>
+              <button class="secondary-button" data-start-tool="want">Find what I want</button>
+            </div>
+          </div>
+          <div class="hero-orbit" aria-hidden="true">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="center-gem">✦</div>
+          </div>
+        </div>
+
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Choose what you need</p>
+            <h2>Guided self-checks</h2>
+          </div>
+        </div>
+
+        <div class="tool-grid" id="homeToolGrid">
+          <button class="tool-card" data-start-tool="emotion">
+            <span class="tool-icon">◌</span>
+            <span class="tool-title">What am I feeling?</span>
+            <span class="tool-description">Narrow down emotions using energy, thoughts, body cues, and urges.</span>
+            <span class="tool-link">Start check-in →</span>
+          </button>
+          <button class="tool-card" data-start-tool="want">
+            <span class="tool-icon">⌁</span>
+            <span class="tool-title">What do I want?</span>
+            <span class="tool-description">Separate genuine preferences from fear, pressure, guilt, and approval.</span>
+            <span class="tool-link">Find the want →</span>
+          </button>
+          <button class="tool-card" data-start-tool="reaction">
+            <span class="tool-icon">↻</span>
+            <span class="tool-title">Why did I react that way?</span>
+            <span class="tool-description">Trace a reaction back to its trigger, interpretation, and unmet need.</span>
+            <span class="tool-link">Explore reaction →</span>
+          </button>
+          <button class="tool-card" data-start-tool="decision">
+            <span class="tool-icon">⇄</span>
+            <span class="tool-title">Help me make a decision</span>
+            <span class="tool-description">Compare relief, fear, values, and outside pressure without outsourcing the choice.</span>
+            <span class="tool-link">Think it through →</span>
+          </button>
+          <button class="tool-card wide" data-start-tool="discovery">
+            <span class="tool-icon">✧</span>
+            <span class="tool-title">What am I learning about myself?</span>
+            <span class="tool-description">Collect real-life evidence about what energizes, drains, matters to, and fits you.</span>
+            <span class="tool-link">Add a discovery →</span>
+          </button>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h3>Your latest check-ins</h3>
+              </div>
+              <button class="text-button" data-go-screen="history">See all</button>
+            </div>
+            <div id="recentEntries" class="empty-state compact">
+              <span class="empty-icon">◇</span>
+              <p>Your saved check-ins will appear here.</p>
+            </div>
+          </article>
+
+          <article class="panel prompt-panel">
+            <p class="eyebrow">Gentle reminder</p>
+            <blockquote id="dailyPrompt">“I do not need certainty to notice what feels true right now.”</blockquote>
+            <button class="secondary-button small" data-start-tool="discovery">Reflect on this</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-tools">
+        <div class="intro-card">
+          <p class="eyebrow">Pick the closest question</p>
+          <h2>You can start with uncertainty</h2>
+          <p>Each guide gives you possibilities to consider. You stay in charge of what fits and what does not.</p>
+        </div>
+        <div class="tool-grid tools-page-grid">
+          <button class="tool-card" data-start-tool="emotion"><span class="tool-icon">◌</span><span class="tool-title">What am I feeling?</span><span class="tool-description">Identify likely emotions and compare close alternatives.</span><span class="tool-link">Begin →</span></button>
+          <button class="tool-card" data-start-tool="want"><span class="tool-icon">⌁</span><span class="tool-title">What do I want?</span><span class="tool-description">Clarify needs, preferences, boundaries, and desired outcomes.</span><span class="tool-link">Begin →</span></button>
+          <button class="tool-card" data-start-tool="reaction"><span class="tool-icon">↻</span><span class="tool-title">Why did I react that way?</span><span class="tool-description">Untangle facts, interpretations, reactions, and needs.</span><span class="tool-link">Begin →</span></button>
+          <button class="tool-card" data-start-tool="decision"><span class="tool-icon">⇄</span><span class="tool-title">Help me make a decision</span><span class="tool-description">Hear your own preference beneath anxiety and other opinions.</span><span class="tool-link">Begin →</span></button>
+          <button class="tool-card wide" data-start-tool="discovery"><span class="tool-icon">✧</span><span class="tool-title">What am I learning about myself?</span><span class="tool-description">Build a grounded identity from lived evidence instead of labels you feel required to match.</span><span class="tool-link">Begin →</span></button>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-insights">
+        <div id="insightsEmpty" class="intro-card centered">
+          <div class="large-symbol">⌁</div>
+          <h2>Your patterns need a little evidence</h2>
+          <p>Complete at least three check-ins. Then this page can reflect recurring emotions, wants, contexts, and discoveries back to you.</p>
+          <button class="primary-button" data-start-tool="emotion">Start a check-in</button>
+        </div>
+        <div id="insightsContent" class="hidden">
+          <div class="stats-row" id="statsRow"></div>
+          <div class="insight-grid">
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Most frequent</p><h3>Emotions you have named</h3></div></div><div id="emotionBars" class="bar-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Often underneath</p><h3>Wants and needs</h3></div></div><div id="needChips" class="chip-cloud"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Possible pattern</p><h3>What your entries suggest</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Evidence about you</p><h3>Identity discoveries</h3></div></div><div id="discoverySummary" class="discovery-summary"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-history">
+        <div class="filter-row">
+          <div class="segmented" id="historyFilters">
+            <button class="active" data-filter="all">All</button>
+            <button data-filter="emotion">Feelings</button>
+            <button data-filter="want">Wants</button>
+            <button data-filter="reaction">Reactions</button>
+            <button data-filter="decision">Decisions</button>
+            <button data-filter="discovery">Discoveries</button>
+          </div>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+
+      <section class="screen" id="screen-settings">
+        <div class="settings-grid">
+          <article class="panel settings-card">
+            <p class="eyebrow">Data</p>
+            <h3>Backup and restore</h3>
+            <p>Export a JSON backup to keep your entries safe or move them to another device.</p>
+            <div class="button-stack">
+              <button class="primary-button" id="exportData">Export backup</button>
+              <label class="secondary-button file-label">Import backup<input id="importData" type="file" accept="application/json" /></label>
+            </div>
+          </article>
+          <article class="panel settings-card">
+            <p class="eyebrow">Privacy</p>
+            <h3>Stored on this device</h3>
+            <p>Inner Compass has no account, server, tracking pixel, or cloud database. Clearing browser storage can remove entries, so export backups occasionally.</p>
+          </article>
+          <article class="panel settings-card danger-card">
+            <p class="eyebrow">Reset</p>
+            <h3>Delete all app data</h3>
+            <p>This permanently removes every saved check-in and discovery from this browser.</p>
+            <button class="danger-button" id="resetData">Delete everything</button>
+          </article>
+          <article class="panel settings-card">
+            <p class="eyebrow">A note about support</p>
+            <h3>This is a reflection tool</h3>
+            <p>It cannot diagnose mental-health conditions or replace professional care. If an exercise makes you feel worse, pause and choose a grounding activity or trusted support person.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Mobile navigation">
+      <button class="active" data-screen="home"><span>⌂</span><small>Home</small></button>
+      <button data-screen="tools"><span>◇</span><small>Tools</small></button>
+      <button data-screen="insights"><span>⌁</span><small>Insights</small></button>
+      <button data-screen="history"><span>☷</span><small>History</small></button>
+      <button data-screen="settings"><span>⚙</span><small>Settings</small></button>
+    </nav>
+  </div>
+
+  <div class="modal-backdrop hidden" id="toolModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <button class="icon-button subtle" id="modalBack" aria-label="Go back">←</button>
+        <div class="modal-title-wrap">
+          <p class="eyebrow" id="modalEyebrow">Guided check-in</p>
+          <h2 id="modalTitle">What am I feeling?</h2>
+        </div>
+        <button class="icon-button subtle" id="modalClose" aria-label="Close">×</button>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
