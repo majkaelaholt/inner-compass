@@ -1,7 +1,57 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 2;
+const APP_VERSION = 3;
+
+const emotionSupport = {
+  Frustration: {
+    default: [
+      'Pause before solving. Name the specific obstacle instead of treating the whole situation as the problem.',
+      'Ask: “What part can I influence, and what part do I need to accept or discuss?”',
+      'Choose one small next move, then give yourself permission to stop pushing for a complete fix right now.'
+    ],
+    relationship: [
+      'Let the first wave settle before responding so the frustration does not choose your tone for you.',
+      'Separate the practical concern from the person: describe what is worrying you, rather than framing them as irresponsible or wrong.',
+      'Try a clear request: “I want us to enjoy things, and I am stressed about money. Can we look at what we can comfortably spend before deciding?”'
+    ]
+  },
+  Anger: {
+    default: ['Create a little physical distance before acting.', 'Identify the crossed boundary or value underneath the anger.', 'State what needs to change using observable facts and a direct request.'],
+    relationship: ['Do not use the intensity of the feeling as proof of the other person’s intent.', 'Lead with the specific behavior and its impact, not a character judgment.', 'Decide whether you need repair, a boundary, information, or simply time to cool down.']
+  },
+  Anxiety: {
+    default: ['Slow the problem down: write what is known, what is assumed, and what is still unknown.', 'Regulate first with slower breathing, grounding, or a brief walk.', 'Pick one information-gathering or preparation step rather than trying to eliminate all uncertainty.'],
+    relationship: ['Check whether you are reacting to what happened or to what you fear it could mean.', 'Ask for clarification instead of mind-reading.', 'Request reassurance plainly, while remembering that reassurance cannot create total certainty.']
+  },
+  Hurt: {
+    default: ['Acknowledge that something mattered before trying to talk yourself out of feeling it.', 'Decide whether you need comfort, space, clarification, or repair.', 'Share the impact in simple language when you feel steady enough.'],
+    relationship: ['Describe what landed painfully without assuming it was intended to hurt you.', 'Ask what the other person meant, then explain what you needed instead.', 'Protect yourself with a boundary if the behavior is repeated or dismissive.']
+  },
+  Sadness: { default: ['Lower the demand to “fix” the feeling immediately.', 'Choose comfort, quiet company, or gentle movement.', 'Name what feels lost or disappointing; sadness often becomes easier to carry when it is specific.'] },
+  Overwhelm: { default: ['Reduce input before making more decisions.', 'Choose the next smallest visible task—or intentionally rest if capacity is gone.', 'Move non-urgent demands out of your head and onto a short list for later.'] },
+  Guilt: { default: ['Check whether you violated a value or merely disappointed an expectation.', 'Repair what is actually yours to repair.', 'After making amends or choosing differently, stop using self-punishment as proof that you care.'] },
+  Resentment: { default: ['Notice what you have been agreeing to while internally saying no.', 'Identify the unspoken expectation or imbalance.', 'Make a boundary or request before resentment has to keep doing the communication for you.'] },
+  Disappointment: { default: ['Let yourself name what you hoped would happen.', 'Separate the painful outcome from a global conclusion about yourself or the future.', 'Adjust the expectation or choose a new route without pretending it did not matter.'] },
+  Loneliness: { default: ['Choose specific connection rather than passive scrolling.', 'Send one low-pressure message or spend time near safe people.', 'Ask what kind of connection is missing: company, affection, understanding, or belonging.'] },
+  Shame: { default: ['Use behavior language instead of identity language: “I did…” rather than “I am…”.', 'Tell the story to someone safe or write it from a more compassionate perspective.', 'Look for the next responsible action, not a punishment.'] },
+  Jealousy: { default: ['Name what feels threatened without treating the fear as evidence.', 'Ask for clarity or reassurance directly.', 'Reconnect with your own boundaries, worth, and choices rather than competing with an imagined rival.'] },
+  Numbness: { default: ['Do not force a breakthrough.', 'Try simple sensory grounding, food, water, rest, or a shower.', 'Give the feeling time and check in again later with less pressure.'] },
+  Relief: { default: ['Let your body finish coming down from the stress.', 'Avoid immediately filling the newly open space with another demand.', 'Notice what helped so you can reuse it.'] },
+  Excitement: { default: ['Give the energy somewhere safe to go: share it, plan one step, or celebrate.', 'Avoid committing to everything while activated.', 'Capture the idea now and evaluate logistics after the initial rush settles.'] },
+  Contentment: { default: ['Let the moment be enough without improving it.', 'Notice the conditions that helped create this steadiness.', 'Savor it through attention rather than documenting or optimizing it.'] }
+};
+
+function getEmotionSupport(emotion, context = '') {
+  const profile = emotionSupport[emotion];
+  const isRelationship = /relationship|family/i.test(context);
+  if (profile) return (isRelationship && profile.relationship ? profile.relationship : profile.default).slice(0, 3);
+  return [
+    'Pause and let the first wave of the feeling settle before choosing a response.',
+    'Ask what the feeling may be protecting or asking for: information, comfort, space, repair, or action.',
+    'Choose the smallest response that supports the need without creating a second problem.'
+  ];
+}
 
 const emotionProfiles = [
   { name: 'Anxiety', tags: ['unpleasant','high','uncertain','threat','fix','fluttery','tension'], need: 'clarity, reassurance, or a manageable next step', description: 'Something feels uncertain, risky, or difficult to control, and your mind is trying to prepare for it.' },
@@ -617,6 +667,17 @@ function renderCandidateResult(type) {
   const candidates = app.session.result.candidates;
   const isEmotion = type === 'emotion';
   const context = app.session.answers.context?.label || '';
+
+  const supportMarkup = emotionName => {
+    const suggestions = getEmotionSupport(emotionName, context);
+    return `<div class="support-box" id="emotionSupportBox">
+      <p class="eyebrow">Respond with more choice</p>
+      <h3>Ways to soothe or work with ${escapeHtml(emotionName.toLowerCase())}</h3>
+      <ul>${suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+      <p>Pick one idea that fits. The goal is not to suppress the feeling—it is to keep the feeling from driving the whole response.</p>
+    </div>`;
+  };
+
   body.innerHTML = `
     <div class="question-count">Possibilities, not a verdict</div>
     <h3 class="question-title">${isEmotion ? 'These feelings may fit' : 'These wants may be underneath'}</h3>
@@ -630,6 +691,7 @@ function renderCandidateResult(type) {
           <div class="result-choice"><input type="radio" name="candidate" value="${escapeHtml(item.name)}" ${index === 0 ? 'checked' : ''}> This feels closest</div>
         </label>`).join('')}
     </div>
+    ${isEmotion ? supportMarkup(candidates[0].name) : ''}
     <div class="field-group" style="margin-top:20px">
       <label class="field-label" for="customCandidate">A different word fits better (optional)</label>
       <input class="text-field" id="customCandidate" placeholder="Example: irritated, hesitant, curious" />
@@ -643,10 +705,21 @@ function renderCandidateResult(type) {
     <p class="gentle-note">The goal is not perfect labeling. It is practicing contact with your own experience.</p>
     <div class="modal-actions"><button class="secondary-button" id="finishWithoutSave">Close</button><button class="primary-button" id="saveCandidate">Save check-in</button></div>`;
 
+  const updateSupport = emotionName => {
+    if (!isEmotion) return;
+    const existing = document.getElementById('emotionSupportBox');
+    if (existing) existing.outerHTML = supportMarkup(emotionName);
+  };
+
   body.querySelectorAll('.result-card').forEach(card => card.addEventListener('click', () => {
     body.querySelectorAll('.result-card').forEach(el => el.classList.remove('primary-result'));
     card.classList.add('primary-result');
+    const selected = card.querySelector('input[name="candidate"]')?.value;
+    if (selected) updateSupport(selected);
   }));
+  document.getElementById('customCandidate').addEventListener('change', event => {
+    if (isEmotion && event.target.value.trim()) updateSupport(event.target.value.trim());
+  });
   document.getElementById('finishWithoutSave').addEventListener('click', closeModal);
   document.getElementById('saveCandidate').addEventListener('click', () => {
     const chosen = document.getElementById('customCandidate').value.trim() || body.querySelector('input[name="candidate"]:checked')?.value || candidates[0].name;
@@ -660,6 +733,7 @@ function renderCandidateResult(type) {
       context: app.session.answers.context?.label || '',
       need: isEmotion ? (chosenProfile?.need || '') : chosen,
       action,
+      support: isEmotion ? getEmotionSupport(chosen, context) : [],
       answers: simplifyAnswers(app.session.answers),
       candidates: candidates.map(item => item.name)
     });
@@ -872,12 +946,15 @@ function renderRecentEntries() {
 
 function historyCardMarkup(entry, allowDelete = true) {
   const detail = entry.meaning || entry.need || entry.action || '';
+  const additions = Array.isArray(entry.additions) ? entry.additions : [];
+  const latestAddition = additions[additions.length - 1];
   return `<article class="history-card">
     <div class="history-type">${historyIcon(entry.type)}</div>
-    <div><h3>${escapeHtml(entry.title)}</h3><p>${escapeHtml(entry.summary || detail || 'Saved reflection')}</p>
-      <div class="history-meta"><span class="meta-chip">${typeLabel(entry.type)}</span>${entry.context ? `<span class="meta-chip">${escapeHtml(entry.context)}</span>` : ''}<span class="meta-chip">${escapeHtml(formatDate(entry.createdAt))}</span></div>
+    <div class="history-content"><h3>${escapeHtml(entry.title)}</h3><p>${escapeHtml(entry.summary || detail || 'Saved reflection')}</p>
+      ${latestAddition ? `<div class="entry-addition"><strong>Added later</strong><span>${escapeHtml(latestAddition.text)}</span>${additions.length > 1 ? `<small>+ ${additions.length - 1} earlier addition${additions.length - 1 === 1 ? '' : 's'}</small>` : ''}</div>` : ''}
+      <div class="history-meta"><span class="meta-chip">${typeLabel(entry.type)}</span>${entry.context ? `<span class="meta-chip">${escapeHtml(entry.context)}</span>` : ''}<span class="meta-chip">${escapeHtml(formatDate(entry.createdAt))}</span>${entry.updatedAt ? '<span class="meta-chip">Edited</span>' : ''}</div>
     </div>
-    ${allowDelete ? `<button class="delete-entry" data-delete-id="${entry.id}" aria-label="Delete entry">×</button>` : ''}
+    ${allowDelete ? `<div class="entry-actions"><button class="entry-action" data-add-note-id="${entry.id}" aria-label="Add to entry" title="Add to entry">＋</button><button class="entry-action" data-edit-id="${entry.id}" aria-label="Edit entry" title="Edit entry">✎</button><button class="delete-entry" data-delete-id="${entry.id}" aria-label="Delete entry" title="Delete entry">×</button></div>` : ''}
   </article>`;
 }
 
@@ -885,11 +962,63 @@ function renderHistory() {
   const list = document.getElementById('historyList');
   const entries = app.historyFilter === 'all' ? app.data.entries : app.data.entries.filter(entry => entry.type === app.historyFilter);
   if (!entries.length) {
-    list.innerHTML = '<div class="intro-card centered"><div class="large-symbol">☷</div><h2>No entries here yet</h2><p>Complete a guided tool and save the reflection. You can delete any entry later.</p></div>';
+    list.innerHTML = '<div class="intro-card centered"><div class="large-symbol">☷</div><h2>No entries here yet</h2><p>Complete a guided tool and save the reflection. You can edit, add to, or delete entries later.</p></div>';
     return;
   }
   list.innerHTML = entries.map(entry => historyCardMarkup(entry)).join('');
   list.querySelectorAll('[data-delete-id]').forEach(button => button.addEventListener('click', () => deleteEntry(button.dataset.deleteId)));
+  list.querySelectorAll('[data-edit-id]').forEach(button => button.addEventListener('click', () => openEntryEditor(button.dataset.editId, 'edit')));
+  list.querySelectorAll('[data-add-note-id]').forEach(button => button.addEventListener('click', () => openEntryEditor(button.dataset.addNoteId, 'add')));
+}
+
+function openEntryEditor(id, mode = 'edit') {
+  const entry = app.data.entries.find(item => item.id === id);
+  if (!entry) return;
+  app.session = { type: 'entry-editor', entryId: id, mode };
+  document.getElementById('modalEyebrow').textContent = mode === 'add' ? 'Continue the reflection' : 'Update saved entry';
+  document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add to this entry' : 'Edit entry';
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('modalBack').style.visibility = 'hidden';
+  document.getElementById('toolModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  const body = document.getElementById('modalBody');
+  const additions = Array.isArray(entry.additions) ? entry.additions : [];
+
+  if (mode === 'add') {
+    body.innerHTML = `<div class="question-count">${escapeHtml(typeLabel(entry.type))}</div>
+      <h3 class="question-title">${escapeHtml(entry.title)}</h3>
+      <p class="result-intro">Add a later thought, update, outcome, or something you understand differently now. The original entry stays intact.</p>
+      ${additions.length ? `<div class="past-additions"><p class="field-label">Previous additions</p>${additions.map(item => `<div><span>${escapeHtml(item.text)}</span><small>${escapeHtml(formatDate(item.createdAt))}</small></div>`).join('')}</div>` : ''}
+      <div class="field-group"><label class="field-label" for="entryAddition">What would you like to add?</label><textarea class="text-area" id="entryAddition" placeholder="A later realization, what happened next, or anything you want to remember…"></textarea></div>
+      <div class="modal-actions"><button class="secondary-button" id="cancelEntryEdit">Cancel</button><button class="primary-button" id="saveEntryAddition">Add note</button></div>`;
+    document.getElementById('cancelEntryEdit').addEventListener('click', closeModal);
+    document.getElementById('saveEntryAddition').addEventListener('click', () => {
+      const text = document.getElementById('entryAddition').value.trim();
+      if (!text) { showToast('Write something to add first.'); return; }
+      entry.additions = [...additions, { id: uid(), text, createdAt: new Date().toISOString() }];
+      entry.updatedAt = new Date().toISOString();
+      saveData(); closeModal(); renderAll(); showToast('Added to the entry.');
+    });
+    return;
+  }
+
+  body.innerHTML = `<div class="question-count">Correct a typo or revise the reflection</div>
+    <div class="field-group"><label class="field-label" for="editEntryTitle">Title</label><input class="text-field" id="editEntryTitle" value="${escapeHtml(entry.title)}" /></div>
+    <div class="field-group"><label class="field-label" for="editEntrySummary">What happened / main note</label><textarea class="text-area" id="editEntrySummary">${escapeHtml(entry.summary || '')}</textarea></div>
+    <div class="field-group"><label class="field-label" for="editEntryAction">Small action or response</label><textarea class="text-area" id="editEntryAction">${escapeHtml(entry.action || '')}</textarea></div>
+    ${entry.type === 'emotion' && Array.isArray(entry.support) && entry.support.length ? `<div class="support-box compact-support"><p class="eyebrow">Saved response ideas</p><ul>${entry.support.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
+    <p class="gentle-note">Editing changes the original entry. Use “add to entry” when you want to preserve it and attach a later update.</p>
+    <div class="modal-actions"><button class="secondary-button" id="cancelEntryEdit">Cancel</button><button class="primary-button" id="saveEntryEdit">Save changes</button></div>`;
+  document.getElementById('cancelEntryEdit').addEventListener('click', closeModal);
+  document.getElementById('saveEntryEdit').addEventListener('click', () => {
+    const title = document.getElementById('editEntryTitle').value.trim();
+    if (!title) { showToast('The entry needs a title.'); return; }
+    entry.title = title;
+    entry.summary = document.getElementById('editEntrySummary').value.trim();
+    entry.action = document.getElementById('editEntryAction').value.trim();
+    entry.updatedAt = new Date().toISOString();
+    saveData(); closeModal(); renderAll(); showToast('Entry updated.');
+  });
 }
 
 function deleteEntry(id) {

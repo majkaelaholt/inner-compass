@@ -42,3 +42,10 @@ This is a reflection and journaling tool. It does not diagnose mental-health con
 ## Free-Time Compass
 
 The **What should I do right now?** guide asks about available time, energy, mental bandwidth, desired feeling, and guilt or decision pressure. It reflects back a likely downtime mode (such as deep recovery, comfort, play, creative expression, connection, or a satisfying reset) and offers concrete activities that fit the current moment. Saved choices appear in History and can contribute to pattern insights after repeated use.
+
+
+## Version 3 additions
+
+- History entries can now be edited to fix typos or revise the original reflection.
+- Entries can also receive dated follow-up notes without overwriting the original.
+- Emotion check-ins now suggest context-aware ways to soothe the feeling and respond with more choice. Relationship and family frustration includes communication-focused guidance rather than only generic calming advice.
