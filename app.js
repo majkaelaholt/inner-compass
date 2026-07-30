@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 1;
+const APP_VERSION = 2;
 
 const emotionProfiles = [
   { name: 'Anxiety', tags: ['unpleasant','high','uncertain','threat','fix','fluttery','tension'], need: 'clarity, reassurance, or a manageable next step', description: 'Something feels uncertain, risky, or difficult to control, and your mind is trying to prepare for it.' },
@@ -168,6 +168,165 @@ const wantQuestions = [
   ]}
 ];
 
+const freeTimeQuestions = [
+  { key: 'time', title: 'How much free time do you have?', help: 'Choose the amount you can realistically use—not the entire empty part of your day.', options: [
+    { label: 'About 5–15 minutes', minutes: 15, tags: ['time-short'] },
+    { label: 'About 20–45 minutes', minutes: 45, tags: ['time-medium'] },
+    { label: 'An hour or more', minutes: 120, tags: ['time-long'] },
+    { label: 'Time is not the main issue', minutes: 180, tags: ['time-open'] }
+  ]},
+  { key: 'energy', title: 'What is your energy actually like?', help: 'Answer for this moment, not for the version of you who planned the day.', options: [
+    { label: 'Depleted—I need very little from myself', tags: ['depleted','low','restore'] },
+    { label: 'Low, but I could enjoy something easy', tags: ['low','gentle'] },
+    { label: 'Steady—I have some usable energy', tags: ['steady','engage'] },
+    { label: 'Restless or wired—I need an outlet', tags: ['restless','movement','engage'] }
+  ]},
+  { key: 'bandwidth', title: 'How much mental effort sounds okay?', help: 'A hobby can be enjoyable and still be too demanding for your current bandwidth.', options: [
+    { label: 'Almost none—please do not make me think', tags: ['no-challenge','restore','comfort'] },
+    { label: 'Something gently engaging', tags: ['gentle','absorb'] },
+    { label: 'I would enjoy focus or a challenge', tags: ['challenge','create','progress'] },
+    { label: 'I cannot tell yet', tags: ['unsure','gentle'] }
+  ]},
+  { key: 'craving', title: 'What are you most drawn toward?', help: 'Pick the pull underneath the activity—not the activity you think sounds best.', options: [
+    { label: 'Comfort, escape, or being cared for', tags: ['comfort','soothe','restore'] },
+    { label: 'Fun, novelty, or play', tags: ['play','entertain','absorb'] },
+    { label: 'Making or expressing something', tags: ['create','expression','challenge'] },
+    { label: 'A small sense of accomplishment or order', tags: ['progress','reset','order'] },
+    { label: 'Connection or shared time', tags: ['connection','soothe'] },
+    { label: 'Movement or a change of scenery', tags: ['movement','reset','restless'] }
+  ]},
+  { key: 'outcome', title: 'How would you like to feel afterward?', help: 'This helps identify the need your free time can meet.', options: [
+    { label: 'More rested', tags: ['rested','restore'] },
+    { label: 'Soothed or emotionally settled', tags: ['soothe','comfort'] },
+    { label: 'Entertained or lighter', tags: ['entertain','play'] },
+    { label: 'Absorbed and interested', tags: ['absorb','gentle'] },
+    { label: 'Proud or pleasantly accomplished', tags: ['progress','create','order'] },
+    { label: 'Connected or less alone', tags: ['connection'] },
+    { label: 'Reset and less stuck', tags: ['reset','movement'] }
+  ]},
+  { key: 'pressure', title: 'What is making the choice harder?', help: 'Pressure often disguises itself as indecision.', options: [
+    { label: 'I am afraid of wasting my free time', tags: ['guilt','permission','overwhelmed'] },
+    { label: 'Only productive hobbies feel like they count', tags: ['guilt','permission','progress-pressure'] },
+    { label: 'There are too many options', tags: ['overwhelmed','gentle','decision-fatigue'] },
+    { label: 'Nothing—I mainly need a suggestion', tags: ['ready'] }
+  ]}
+];
+
+const freeTimeProfiles = [
+  {
+    name: 'Deep recovery',
+    tags: ['depleted','low','restore','no-challenge','rested','soothe','comfort','permission','guilt','overwhelmed'],
+    strongTags: ['depleted','no-challenge','rested','restore'],
+    description: 'Your system looks more in need of recovery than stimulation. The best choice is probably something low-demand that lets your mind and body stop performing.',
+    permission: 'Rest is not the absence of a worthwhile life. Sometimes it is the activity that makes the rest of your life possible.',
+    activities: [
+      { title: 'Watch one familiar TV episode', detail: 'Choose comfort over novelty and let the episode be the whole activity.', min: 15 },
+      { title: 'Lie down with music or an audiobook', detail: 'No cleaning, planning, or multitasking required.', min: 5 },
+      { title: 'Read something easy with no page goal', detail: 'Stopping after a few pages still counts as using your free time well.', min: 10 },
+      { title: 'Take a comfort reset', detail: 'Shower, comfy clothes, water or a snack, then nothing demanding.', min: 15 },
+      { title: 'Take a deliberate phone break', detail: 'Set a timer and choose one specific thing to view instead of falling into an endless feed.', min: 5 }
+    ]
+  },
+  {
+    name: 'Comfort and entertainment',
+    tags: ['low','gentle','comfort','soothe','entertain','play','absorb','no-challenge','permission'],
+    strongTags: ['comfort','soothe','entertain'],
+    description: 'You seem to want pleasant, easy engagement—enough to hold your attention without turning downtime into another assignment.',
+    permission: 'Being entertained is a real purpose. A show, book, or game does not become less valuable because it produces nothing afterward.',
+    activities: [
+      { title: 'Watch a show or movie you are genuinely in the mood for', detail: 'Pick based on desire, not what feels culturally impressive.', min: 20 },
+      { title: 'Read a romance or fantasy book', detail: 'Let immersion be the point; there is no reading quota.', min: 10 },
+      { title: 'Play a cozy or familiar game', detail: 'Sims, Minecraft, or Skyrim can be downtime without needing a project goal.', min: 15 },
+      { title: 'Make a snack and watch something', detail: 'A simple comfort ritual can be the plan—not a fallback.', min: 15 },
+      { title: 'Browse one interest intentionally', detail: 'Perfume, books, or thrift finds—with a clear topic and stopping point.', min: 10 }
+    ]
+  },
+  {
+    name: 'Gentle interest',
+    tags: ['low','steady','gentle','absorb','unsure','decision-fatigue','play','entertain','engage'],
+    strongTags: ['gentle','absorb','decision-fatigue'],
+    description: 'You may want to be occupied, but not challenged. A lightly absorbing activity can bridge the gap between exhaustion and full creative focus.',
+    permission: 'You do not have to choose between “productive” and “doing nothing.” Gentle engagement is its own useful middle ground.',
+    activities: [
+      { title: 'Read for ten minutes', detail: 'Continue only if your attention naturally settles in.', min: 10 },
+      { title: 'Do an easy, repetitive crochet section', detail: 'Choose a familiar stitch rather than learning something new.', min: 15 },
+      { title: 'Play a game without an achievement goal', detail: 'Wander, decorate, build, or follow whatever seems fun.', min: 15 },
+      { title: 'Watch a video about something you are curious about', detail: 'One intentional topic, not an algorithmic spiral.', min: 10 },
+      { title: 'Make a small favorites list', detail: 'Books, perfumes, recipes, outfits, or future ideas—stop before it becomes research homework.', min: 10 }
+    ]
+  },
+  {
+    name: 'Play and novelty',
+    tags: ['steady','restless','engage','play','entertain','absorb','ready','movement'],
+    strongTags: ['play','entertain','restless'],
+    description: 'Your energy seems to want somewhere fun to go. The goal is aliveness and enjoyment, not improvement.',
+    permission: 'Play is not childish or wasted. It gives your attention somewhere chosen to land instead of letting a feed choose for you.',
+    activities: [
+      { title: 'Start a purely-for-fun game session', detail: 'Pick the game that sounds most tempting right now, not the one you “should” finish.', min: 15 },
+      { title: 'Try a playful Sims or Minecraft idea', detail: 'Build one room, make one character, or follow one silly concept.', min: 20 },
+      { title: 'Window-shop one category', detail: 'Use a wishlist or screenshots so the browsing has an endpoint.', min: 15 },
+      { title: 'Make a themed playlist or mood board', detail: 'Keep it low-stakes and follow whatever catches your attention.', min: 15 },
+      { title: 'Go somewhere small and different', detail: 'A coffee run, thrift store, library, or short walk can create enough novelty.', min: 20 }
+    ]
+  },
+  {
+    name: 'Creative expression',
+    tags: ['steady','challenge','create','expression','absorb','progress','engage'],
+    strongTags: ['create','expression','challenge'],
+    description: 'You appear to have enough bandwidth to make, practice, or express something. Choose the form that feels inviting—not the one that best proves you are talented or disciplined.',
+    permission: 'Creative hobbies are allowed to be messy, unfinished, and private. Their value does not depend on producing something impressive.',
+    activities: [
+      { title: 'Play piano with no practice standard', detail: 'Repeat a favorite section, improvise, or learn only a few measures.', min: 10 },
+      { title: 'Crochet whatever feels easiest to pick up', detail: 'Progress can be tiny; enjoying the texture and rhythm counts.', min: 15 },
+      { title: 'Write, design, or build something small', detail: 'A scene, character, room, list, or tiny digital project is enough.', min: 15 },
+      { title: 'Bake or choose a future baking project', detail: 'Use the energy you have: bake now, or simply save one recipe and ingredients.', min: 20 },
+      { title: 'Make something for the pleasure of arranging it', detail: 'A mood board, outfit, playlist, shelf, or game build can all be creative expression.', min: 15 }
+    ]
+  },
+  {
+    name: 'A satisfying reset',
+    tags: ['steady','restless','challenge','progress','reset','order','movement','ready','progress-pressure'],
+    strongTags: ['progress','reset','order'],
+    description: 'You may genuinely want a small dose of progress or order. Keep it contained so free time does not quietly turn into an obligation marathon.',
+    permission: 'Productive activity is fine when it is what you want—not when guilt is forcing you to earn rest.',
+    activities: [
+      { title: 'Do a ten-minute tidy of one visible area', detail: 'Stop when the timer ends, even if more could be done.', min: 10 },
+      { title: 'Organize one tiny category', detail: 'One drawer, shelf, bag, or collection—not the whole room.', min: 15 },
+      { title: 'Make one small plan that reduces mental clutter', detail: 'Write the next step, then close the planner.', min: 10 },
+      { title: 'Practice one skill for a short block', detail: 'Choose piano, crochet, or another skill only if practice itself sounds satisfying.', min: 10 },
+      { title: 'Complete one neglected two-minute task', detail: 'Then intentionally return to leisure instead of generating a new task list.', min: 5 }
+    ]
+  },
+  {
+    name: 'Connection',
+    tags: ['connection','soothe','low','steady','gentle','entertain','comfort'],
+    strongTags: ['connection'],
+    description: 'Your free time may be asking for shared attention rather than another solo activity. Connection can be quiet, playful, or low-effort.',
+    permission: 'Time spent connecting is not less legitimate because there is no visible result to show for it.',
+    activities: [
+      { title: 'Ask Ty to watch or play something together', detail: 'Choose an easy shared activity rather than waiting for a perfect plan.', min: 20 },
+      { title: 'Send one honest “want to talk?” text', detail: 'Reach toward the person you actually want—not the person you feel obligated to contact.', min: 5 },
+      { title: 'Call someone while doing something cozy', detail: 'Pair connection with a snack, walk, or simple chore if that lowers the friction.', min: 15 },
+      { title: 'Share a small interest', detail: 'Send a meme, perfume find, book thought, or game idea that made you think of someone.', min: 5 },
+      { title: 'Spend quiet parallel time together', detail: 'Being in the same room doing separate things still counts as connection.', min: 15 }
+    ]
+  },
+  {
+    name: 'Movement and change of scenery',
+    tags: ['restless','movement','reset','engage','steady','play','ready'],
+    strongTags: ['restless','movement','reset'],
+    description: 'Your body may need a state change more than your brain needs another choice. A little movement or novelty could make the rest of your free time easier to use.',
+    permission: 'Movement does not have to be a workout, and a change of scenery does not need to become an errand.',
+    activities: [
+      { title: 'Take a short walk with music', detail: 'No step goal and no need to turn it into exercise.', min: 10 },
+      { title: 'Do a gentle stretch or barre flow', detail: 'Pick movements that feel good rather than trying to complete a program.', min: 10 },
+      { title: 'Go get a drink or browse somewhere nearby', detail: 'Let leaving the house be the activity, not a productivity mission.', min: 20 },
+      { title: 'Move to one or two favorite songs', detail: 'Dance, pace, stretch, or clean one small thing while the music plays.', min: 5 },
+      { title: 'Change rooms and reset the atmosphere', detail: 'Open a window, change lighting, make a drink, and choose again afterward.', min: 5 }
+    ]
+  }
+];
+
 const reactionQuestions = [
   { key: 'reactionType', title: 'What did your reaction look like?', help: 'Choose the most noticeable part.', options: [
     { label: 'I became defensive or argued', tags: ['defend','fight'] },
@@ -294,6 +453,7 @@ function startTool(type) {
   app.session = { type, step: 0, answers: {}, setup: {}, result: null };
   const titles = {
     emotion: ['Guided check-in', 'What am I feeling?'],
+    freetime: ['Free-Time Compass', 'What should I do right now?'],
     want: ['Preference finder', 'What do I want?'],
     reaction: ['Reaction explorer', 'Why did I react that way?'],
     decision: ['Decision reflection', 'Help me make a decision'],
@@ -313,7 +473,7 @@ function closeModal() {
 }
 
 function getQuestions(type) {
-  return type === 'emotion' ? emotionQuestions : type === 'want' ? wantQuestions : type === 'reaction' ? reactionQuestions : decisionQuestions;
+  return type === 'emotion' ? emotionQuestions : type === 'freetime' ? freeTimeQuestions : type === 'want' ? wantQuestions : type === 'reaction' ? reactionQuestions : decisionQuestions;
 }
 
 function updateProgress(current, total) {
@@ -395,6 +555,22 @@ function rankProfiles(profiles, tags) {
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 }
 
+function rankFreeTimeProfiles(tags) {
+  const tagCounts = countValues(tags);
+  return freeTimeProfiles
+    .map(profile => {
+      const baseScore = profile.tags.reduce((sum, tag) => sum + (tagCounts[tag] || 0), 0);
+      const priorityScore = (profile.strongTags || []).reduce((sum, tag) => sum + (tagCounts[tag] || 0), 0);
+      return { ...profile, score: baseScore + priorityScore };
+    })
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+
+function getFreeTimeIdeas(profile, minutes) {
+  const fitting = profile.activities.filter(activity => (activity.min || 0) <= minutes);
+  return (fitting.length ? fitting : profile.activities).slice(0, 5);
+}
+
 function calculateResult(type, answers) {
   if (type === 'emotion') {
     const tags = collectTags(answers);
@@ -403,6 +579,10 @@ function calculateResult(type, answers) {
   if (type === 'want') {
     const tags = collectTags(answers);
     return { candidates: rankProfiles(wantProfiles, tags).slice(0, 3), tags };
+  }
+  if (type === 'freetime') {
+    const tags = collectTags(answers);
+    return { candidates: rankFreeTimeProfiles(tags).slice(0, 3), tags, selectedProfileIndex: 0 };
   }
   if (type === 'reaction') {
     const reaction = answers.reactionType?.label || 'A protective reaction';
@@ -427,6 +607,7 @@ function calculateResult(type, answers) {
 function renderResult() {
   const type = app.session.type;
   if (type === 'emotion' || type === 'want') renderCandidateResult(type);
+  else if (type === 'freetime') renderFreeTimeResult();
   else if (type === 'reaction') renderReactionResult();
   else if (type === 'decision') renderDecisionResult();
 }
@@ -482,6 +663,74 @@ function renderCandidateResult(type) {
       answers: simplifyAnswers(app.session.answers),
       candidates: candidates.map(item => item.name)
     });
+  });
+}
+
+function renderFreeTimeResult() {
+  const body = document.getElementById('modalBody');
+  const result = app.session.result;
+  const profileIndex = Math.min(result.selectedProfileIndex || 0, result.candidates.length - 1);
+  const profile = result.candidates[profileIndex];
+  const minutes = app.session.answers.time?.minutes || 60;
+  const ideas = getFreeTimeIdeas(profile, minutes);
+  const energy = app.session.answers.energy?.label || '';
+  const bandwidth = app.session.answers.bandwidth?.label || '';
+  const craving = app.session.answers.craving?.label || '';
+
+  body.innerHTML = `
+    <div class="question-count">A good-enough choice for right now</div>
+    <h3 class="question-title">You may need ${escapeHtml(profile.name.toLowerCase())}</h3>
+    <div class="result-intro">${escapeHtml(profile.description)}</div>
+    <div class="free-time-permission"><strong>Permission, not a loophole</strong><span>${escapeHtml(profile.permission)}</span></div>
+    <p class="choice-guidance">Choose the option that creates the least resistance or the clearest small “yes”—not the one that sounds most impressive.</p>
+    <div class="activity-choice-list">
+      ${ideas.map((activity, index) => `
+        <label class="activity-choice ${index === 0 ? 'selected' : ''}">
+          <input type="radio" name="freeTimeActivity" value="${escapeHtml(activity.title)}" ${index === 0 ? 'checked' : ''}>
+          <span><strong>${escapeHtml(activity.title)}</strong><small>${escapeHtml(activity.detail)}</small></span>
+        </label>`).join('')}
+    </div>
+    <div class="free-time-actions-row">
+      <button class="secondary-button small" id="pickActivity">Pick one for me</button>
+    </div>
+    <div class="field-group" style="margin-top:18px">
+      <label class="field-label" for="customActivity">A different activity sounds better (optional)</label>
+      <input class="text-field" id="customActivity" placeholder="What are you leaning toward?" />
+    </div>
+    ${result.candidates.length > 1 ? `<div class="alternate-modes"><span>Not quite right? Try another kind of downtime:</span>${result.candidates.map((candidate, index) => `<button class="text-button ${index === profileIndex ? 'active-alternate' : ''}" data-free-time-profile="${index}">${escapeHtml(candidate.name)}</button>`).join('')}</div>` : ''}
+    <div class="free-time-context"><span>${escapeHtml(energy)}</span><span>${escapeHtml(bandwidth)}</span><span>${escapeHtml(craving)}</span></div>
+    <p class="gentle-note"><strong>Anti-doomscroll rule:</strong> choose the activity first, then open the device or app you need for it. After ten minutes, you are allowed to stop, continue, or choose again.</p>
+    <div class="modal-actions"><button class="secondary-button" id="finishWithoutSave">Close</button><button class="primary-button" id="saveFreeTime">Choose this</button></div>`;
+
+  body.querySelectorAll('.activity-choice').forEach(choice => choice.addEventListener('click', () => {
+    body.querySelectorAll('.activity-choice').forEach(item => item.classList.remove('selected'));
+    choice.classList.add('selected');
+  }));
+  body.querySelectorAll('[data-free-time-profile]').forEach(button => button.addEventListener('click', () => {
+    result.selectedProfileIndex = Number(button.dataset.freeTimeProfile);
+    renderFreeTimeResult();
+  }));
+  document.getElementById('pickActivity').addEventListener('click', () => {
+    const choices = [...body.querySelectorAll('.activity-choice')];
+    const picked = choices[Math.floor(Math.random() * choices.length)];
+    body.querySelectorAll('.activity-choice').forEach(item => item.classList.toggle('selected', item === picked));
+    const radio = picked.querySelector('input');
+    radio.checked = true;
+    picked.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  document.getElementById('finishWithoutSave').addEventListener('click', closeModal);
+  document.getElementById('saveFreeTime').addEventListener('click', () => {
+    const chosen = document.getElementById('customActivity').value.trim() || body.querySelector('input[name="freeTimeActivity"]:checked')?.value || ideas[0].title;
+    addEntry({
+      type: 'freetime',
+      title: chosen,
+      summary: `${profile.name}: ${profile.description}`,
+      need: '',
+      mode: profile.name,
+      action: chosen,
+      context: app.session.answers.energy?.label || '',
+      answers: simplifyAnswers(app.session.answers)
+    }, 'Choice saved. You do not need to justify it.');
   });
 }
 
@@ -593,20 +842,20 @@ function simplifyAnswers(answers) {
   return Object.fromEntries(Object.entries(answers).map(([key, value]) => [key, value.label || value.value || String(value)]));
 }
 
-function addEntry(entry) {
+function addEntry(entry, toastMessage = 'Saved to your Inner Compass.') {
   app.data.entries.unshift({ id: uid(), createdAt: new Date().toISOString(), ...entry });
   saveData();
   closeModal();
   renderAll();
-  showToast('Saved to your Inner Compass.');
+  showToast(toastMessage);
 }
 
 function historyIcon(type) {
-  return { emotion: '◌', want: '⌁', reaction: '↻', decision: '⇄', discovery: '✧' }[type] || '◇';
+  return { emotion: '◌', want: '⌁', reaction: '↻', decision: '⇄', freetime: '☕', discovery: '✧' }[type] || '◇';
 }
 
 function typeLabel(type) {
-  return { emotion: 'Feeling', want: 'Want', reaction: 'Reaction', decision: 'Decision', discovery: 'Discovery' }[type] || type;
+  return { emotion: 'Feeling', want: 'Want', reaction: 'Reaction', decision: 'Decision', freetime: 'Free-time choice', discovery: 'Discovery' }[type] || type;
 }
 
 function renderRecentEntries() {
@@ -680,9 +929,10 @@ function renderInsights() {
   const emotionEntries = entries.filter(entry => entry.type === 'emotion');
   const discoveryEntries = entries.filter(entry => entry.type === 'discovery');
   const needs = entries.flatMap(entry => {
-    if (!entry.need) return [];
+    if (!entry.need || entry.type === 'freetime') return [];
     return entry.need.split(/,| or /).map(value => value.trim().replace(/^a /, '')).filter(Boolean);
   });
+  const freeTimeEntries = entries.filter(entry => entry.type === 'freetime');
   const contexts = emotionEntries.map(entry => entry.context).filter(Boolean);
   const topEmotion = sortedCounts(countValues(emotionEntries.map(entry => entry.title)))[0];
   const topNeed = sortedCounts(countValues(needs))[0];
@@ -709,6 +959,8 @@ function renderInsights() {
   if (topContext) patterns.push(`Feelings are showing up most often around <strong>${escapeHtml(topContext[0])}</strong>. That context may deserve more specific reflection or support.`);
   const approvalMentions = entries.filter(entry => JSON.stringify(entry.answers || {}).toLowerCase().includes('approval') || JSON.stringify(entry.answers || {}).toLowerCase().includes('judg')).length;
   if (approvalMentions >= 2) patterns.push(`Several entries involve judgment, approval, or other people’s reactions. A useful question may be: <strong>“What would I choose or feel if nobody needed me to manage their response?”</strong>`);
+  const topFreeTimeMode = sortedCounts(countValues(freeTimeEntries.map(entry => entry.mode)))[0];
+  if (topFreeTimeMode && freeTimeEntries.length >= 2) patterns.push(`Your free-time check-ins most often point toward <strong>${escapeHtml(topFreeTimeMode[0])}</strong>. That may be a recurring need lately—not a rule for what you should always choose.`);
   if (!patterns.length) patterns.push('You have enough entries to begin noticing patterns, but no single theme dominates yet. That is useful information too.');
   document.getElementById('patternCards').innerHTML = patterns.map(text => `<div class="pattern-card">${text}</div>`).join('');
 

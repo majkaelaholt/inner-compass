@@ -1,7 +1,7 @@
 {
   "name": "Inner Compass",
   "short_name": "Compass",
-  "description": "A private guided self-awareness app for emotions, wants, reactions, decisions, and identity discoveries.",
+  "description": "A private guided self-awareness app for emotions, wants, free-time choices, reactions, decisions, and identity discoveries.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f1ed",

@@ -4,6 +4,7 @@ A mobile-first, installable self-awareness web app for:
 
 - Naming likely emotions through guided multiple-choice questions
 - Clarifying wants, needs, preferences, and boundaries
+- Choosing free-time activities based on current energy, mental bandwidth, available time, and emotional need—without treating rest as less worthy
 - Understanding reactions as trigger → interpretation → protection → need
 - Reflecting on decisions without outsourcing the choice
 - Building an evidence-based record of what energizes, drains, fits, and matters to you
@@ -37,3 +38,7 @@ On iPhone or iPad, open the deployed site in Safari, tap **Share**, and choose *
 ## Important note
 
 This is a reflection and journaling tool. It does not diagnose mental-health conditions and should not be treated as a replacement for professional care.
+
+## Free-Time Compass
+
+The **What should I do right now?** guide asks about available time, energy, mental bandwidth, desired feeling, and guilt or decision pressure. It reflects back a likely downtime mode (such as deep recovery, comfort, play, creative expression, connection, or a satisfying reset) and offers concrete activities that fit the current moment. Saved choices appear in History and can contribute to pattern insights after repeated use.
