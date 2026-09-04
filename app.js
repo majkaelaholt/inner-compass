@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 3;
+const APP_VERSION = 4;
 
 const emotionSupport = {
   Frustration: {
@@ -440,6 +440,7 @@ const discoveryCategories = {
 const screenMeta = {
   home: ['Today', 'Come back to yourself'],
   tools: ['Guided reflection', 'Choose what you need'],
+  reality: ['Reality Check', 'What is actually reasonable?'],
   insights: ['Patterns', 'What your entries are teaching you'],
   history: ['Your record', 'Past check-ins and discoveries'],
   settings: ['Inner Compass', 'Privacy and data']
@@ -449,7 +450,8 @@ const app = {
   data: loadData(),
   screen: 'home',
   historyFilter: 'all',
-  session: null
+  session: null,
+  realityDraft: null
 };
 
 function loadData() {
@@ -925,11 +927,234 @@ function addEntry(entry, toastMessage = 'Saved to your Inner Compass.') {
 }
 
 function historyIcon(type) {
-  return { emotion: '◌', want: '⌁', reaction: '↻', decision: '⇄', freetime: '☕', discovery: '✧' }[type] || '◇';
+  return { emotion: '◌', want: '⌁', reaction: '↻', decision: '⇄', freetime: '☕', reality: '⚖', discovery: '✧' }[type] || '◇';
 }
 
 function typeLabel(type) {
-  return { emotion: 'Feeling', want: 'Want', reaction: 'Reaction', decision: 'Decision', freetime: 'Free-time choice', discovery: 'Discovery' }[type] || type;
+  return { emotion: 'Feeling', want: 'Want', reaction: 'Reaction', decision: 'Decision', freetime: 'Free-time choice', reality: 'Reality check', discovery: 'Discovery' }[type] || type;
+}
+
+
+function realityNumber(id) {
+  const value = parseFloat(document.getElementById(id)?.value);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function setRealityResult(title, body, tone = 'neutral', draft = null) {
+  const target = document.getElementById('realityResult');
+  if (!target) return;
+  app.realityDraft = draft;
+  target.innerHTML = `<div class="reality-result ${tone}"><p class="eyebrow">Reality check</p><h3>${escapeHtml(title)}</h3><div class="reality-result-copy">${body}</div>${draft ? '<button class="secondary-button small" id="saveRealityCheck">Save to History</button>' : ''}</div>`;
+  document.getElementById('saveRealityCheck')?.addEventListener('click', saveRealityCheck);
+}
+
+function saveRealityCheck() {
+  if (!app.realityDraft) return;
+  const draft = app.realityDraft;
+  app.data.entries.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    type: 'reality',
+    title: draft.title,
+    summary: draft.summary,
+    action: draft.action || '',
+    context: draft.context || '',
+    realityKind: draft.realityKind || '',
+    outcome: draft.outcome || ''
+  });
+  saveData();
+  app.realityDraft = null;
+  renderAll();
+  const button = document.getElementById('saveRealityCheck');
+  if (button) {
+    button.textContent = 'Saved ✓';
+    button.disabled = true;
+  }
+  showToast('Reality check saved to History.');
+}
+
+function renderRealityMode(mode) {
+  const workspace = document.getElementById('realityWorkspace');
+  if (!workspace) return;
+  app.realityDraft = null;
+  document.querySelectorAll('[data-reality-mode]').forEach(button => button.classList.toggle('active', button.dataset.realityMode === mode));
+
+  if (mode === 'capacity') {
+    workspace.innerHTML = `<div class="reality-form-header"><p class="eyebrow">Time reality</p><h2>Does this actually fit today?</h2><p>Count fixed commitments first. Leftover time is not automatically a blank block you owe to productivity.</p></div>
+      <div class="reality-form-grid two-col">
+        <label>Sleep target <span><input class="text-field compact-number" type="number" id="rcSleep" min="0" max="24" step=".25" value="8"> hours</span></label>
+        <label>Work <span><input class="text-field compact-number" type="number" id="rcWork" min="0" max="24" step=".25" value="8"> hours</span></label>
+        <label>Commute / getting ready <span><input class="text-field compact-number" type="number" id="rcCommute" min="0" max="24" step=".25" value="1.5"> hours</span></label>
+        <label>Gym / exercise <span><input class="text-field compact-number" type="number" id="rcGym" min="0" max="24" step=".25" value="1.5"> hours</span></label>
+        <label>School / focused work <span><input class="text-field compact-number" type="number" id="rcSchool" min="0" max="24" step=".25" value="1.5"> hours</span></label>
+        <label>Meals / shower / basics <span><input class="text-field compact-number" type="number" id="rcBasics" min="0" max="24" step=".25" value="2"> hours</span></label>
+      </div>
+      <div class="reality-divider"></div>
+      <div class="reality-form-grid">
+        <label>Thing I want to get done<input class="text-field" id="rcTask" placeholder="e.g. fully clean the house"></label>
+        <label>How long would it realistically take?<span><input class="text-field compact-number" type="number" id="rcTaskHours" min="0" step=".25" value="2"> hours</span></label>
+      </div>
+      <button class="primary-button" id="runCapacityCheck">Check reality</button><div id="realityResult"></div>`;
+    document.getElementById('runCapacityCheck').addEventListener('click', () => {
+      const committed = ['rcSleep','rcWork','rcCommute','rcGym','rcSchool','rcBasics'].reduce((sum,id) => sum + realityNumber(id), 0);
+      const available = Math.max(0, 24 - committed);
+      const task = document.getElementById('rcTask').value.trim() || 'The task';
+      const taskHours = realityNumber('rcTaskHours');
+      let title, summary, action, outcome, tone, body;
+      if (committed > 24) {
+        title = 'Your current plan already exceeds 24 hours.';
+        summary = `Before ${task}, you allocated ${committed.toFixed(1)} hours. The day does not contain the plan as written.`;
+        action = 'Shrink, move, or remove something instead of treating this as a motivation failure.';
+        outcome = 'overbooked'; tone = 'warn';
+        body = `You have allocated <strong>${committed.toFixed(1)} hours</strong> before this task. This is a scheduling problem, not evidence that you should try harder.`;
+      } else if (taskHours > available) {
+        title = `${task} does not fit as currently defined.`;
+        summary = `${available.toFixed(1)} hours remain on paper; ${task} needs about ${taskHours.toFixed(1)}.`;
+        action = 'Reduce the scope or move part of the task to another day.';
+        outcome = 'does not fit'; tone = 'warn';
+        body = `You have about <strong>${available.toFixed(1)} hours</strong> left before any unplanned life. The task needs about <strong>${taskHours.toFixed(1)}</strong>. “I did not finish it” would not mean “I was not productive.”`;
+      } else if (available < 2) {
+        title = 'It technically fits, but your margin is tiny.';
+        summary = `${available.toFixed(1)} hours remain after fixed commitments; ${task} is possible only with little buffer.`;
+        action = 'Aim for a minimum or maintenance version unless the task is genuinely urgent.';
+        outcome = 'tight fit'; tone = 'neutral';
+        body = `You have about <strong>${available.toFixed(1)} hours</strong> left. Treat that as limited capacity, not a blank productivity block.`;
+      } else {
+        title = 'It fits on paper.';
+        summary = `${available.toFixed(1)} hours remain after fixed commitments; ${task} needs about ${taskHours.toFixed(1)}.`;
+        action = 'Decide whether this task actually outranks rest, relationships, and buffer time today.';
+        outcome = 'fits'; tone = 'good';
+        body = `You have about <strong>${available.toFixed(1)} hours</strong> left. Possible does not automatically mean required.`;
+      }
+      setRealityResult(title, body, tone, { title: `Time reality: ${task}`, summary, action, context: 'Time reality', realityKind: 'capacity', outcome });
+    });
+    return;
+  }
+
+  if (mode === 'state') {
+    workspace.innerHTML = `<div class="reality-form-header"><p class="eyebrow">State check</p><h2>Rest, avoidance, or both?</h2><p>This deliberately does not ask “Are you tired?” and rubber-stamp the answer. It looks for competing evidence.</p></div>
+      <div class="reality-form-grid">
+        <label>How much true downtime have you already had today?<select class="select-field" id="rcDowntime"><option value="0">Almost none</option><option value="1">30–60 minutes</option><option value="2">1–3 hours</option><option value="3">3+ hours</option></select></label>
+        <label>Does almost everything feel hard, or mainly this task?<select class="select-field" id="rcGlobalHard"><option value="2">Almost everything feels hard</option><option value="1">A mix</option><option value="0">Mostly this task</option></select></label>
+        <label>If you started for 10 minutes, what do you predict?<select class="select-field" id="rcTenMin"><option value="2">I would probably still feel wiped out</option><option value="1">I am genuinely not sure</option><option value="0">I would probably get into it</option></select></label>
+        <label>Have you postponed this same thing multiple times?<select class="select-field" id="rcPostponed"><option value="0">No</option><option value="1">Once or twice</option><option value="2">Repeatedly</option></select></label>
+        <label>How depleted do you feel overall?<div class="reality-range-row"><input type="range" id="rcDepletion" min="0" max="10" value="5"><strong id="rcDepletionReadout">5 / 10</strong></div></label>
+      </div>
+      <button class="primary-button" id="runStateCheck">Assess the evidence</button><div id="realityResult"></div>`;
+    const range = document.getElementById('rcDepletion');
+    range.addEventListener('input', () => document.getElementById('rcDepletionReadout').textContent = `${range.value} / 10`);
+    document.getElementById('runStateCheck').addEventListener('click', () => {
+      const downtime = +document.getElementById('rcDowntime').value;
+      const globalHard = +document.getElementById('rcGlobalHard').value;
+      const ten = +document.getElementById('rcTenMin').value;
+      const postponed = +document.getElementById('rcPostponed').value;
+      const depletion = +document.getElementById('rcDepletion').value;
+      const restScore = globalHard*2 + ten*2 + depletion/2 - downtime;
+      const avoidScore = downtime*1.5 + postponed*2 + (2-globalHard)*1.5 + (2-ten);
+      let title, body, outcome, action, tone;
+      if (Math.abs(restScore - avoidScore) < 2) {
+        outcome = 'mixed'; tone = 'neutral'; title = 'This looks mixed: some depletion, some avoidance.';
+        action = 'Try 20–30 minutes of real rest, then a 10-minute minimum version. Reassess from what actually happens.';
+        body = `You do not need to win a court case about whether you are “really tired.” <strong>Both can be true.</strong> Use a short recovery block and then a small activation test.`;
+      } else if (restScore > avoidScore) {
+        outcome = 'depletion'; tone = 'good'; title = 'Evidence leans toward depletion.';
+        action = 'Choose real recovery and lower today’s standard. Reassess later only if capacity actually returns.';
+        body = `Your resistance looks broader than one task. That makes depletion more plausible than simple task avoidance. Choose recovery that tends to restore you—not endless low-quality scrolling.`;
+      } else {
+        outcome = 'avoidance'; tone = 'warn'; title = 'Evidence leans toward avoidance / activation trouble.';
+        action = 'Do 10 minutes only. If starting makes it easier, continue if you choose; if you feel worse, stop and update the evidence.';
+        body = `You may be using “I’m tired” to describe resistance to this task. That does not make you a lazy person, but it does mean <strong>action is the better test than reassurance</strong>.`;
+      }
+      setRealityResult(title, body, tone, { title: 'Rest or avoidance?', summary: `Current evidence leaned ${outcome}.`, action, context: 'State check', realityKind: 'state', outcome });
+    });
+    return;
+  }
+
+  if (mode === 'enough') {
+    workspace.innerHTML = `<div class="reality-form-header"><p class="eyebrow">Good enough</p><h2>Define “done” before your standard expands.</h2><p>The point is not to lower every standard. It is to stop treating every version below “full reset” as zero.</p></div>
+      <div class="reality-form-grid">
+        <label>What are you trying to get done?<input class="text-field" id="rcEnoughTask" placeholder="e.g. clean the kitchen"></label>
+        <label><span class="reality-level"><b>1</b> Minimum — keeps life functional</span><textarea class="text-area" id="rcMinimum" placeholder="e.g. load dishwasher + wipe counters"></textarea></label>
+        <label><span class="reality-level"><b>2</b> Good enough — noticeably improved</span><textarea class="text-area" id="rcGood" placeholder="e.g. minimum + sweep + put obvious clutter away"></textarea></label>
+        <label><span class="reality-level"><b>3</b> Full reset — polished / complete</span><textarea class="text-area" id="rcFull" placeholder="e.g. good enough + mop + detail-clean + organize"></textarea></label>
+        <label>What level does today realistically support?<select class="select-field" id="rcTodayLevel"><option value="Minimum">Minimum</option><option value="Good enough" selected>Good enough</option><option value="Full reset">Full reset</option></select></label>
+      </div>
+      <button class="primary-button" id="runEnoughCheck">Set today’s stopping point</button><div id="realityResult"></div>`;
+    document.getElementById('runEnoughCheck').addEventListener('click', () => {
+      const task = document.getElementById('rcEnoughTask').value.trim() || 'This task';
+      const level = document.getElementById('rcTodayLevel').value;
+      const values = { 'Minimum': document.getElementById('rcMinimum').value.trim(), 'Good enough': document.getElementById('rcGood').value.trim(), 'Full reset': document.getElementById('rcFull').value.trim() };
+      const stoppingPoint = values[level] || `Stop when the ${level.toLowerCase()} version is complete.`;
+      const body = `<strong>${escapeHtml(level)}</strong> is the finish line today.<br><br>${escapeHtml(stoppingPoint)}<br><br>Anything beyond that is optional. It does not have to happen for the effort to count.`;
+      setRealityResult(`${level} counts as done today.`, body, 'good', { title: `Good enough: ${task}`, summary: `${level} was chosen as today’s stopping point.`, action: stoppingPoint, context: 'Good enough', realityKind: 'enough', outcome: level.toLowerCase() });
+    });
+    return;
+  }
+
+  if (mode === 'rule') {
+    workspace.innerHTML = `<div class="reality-form-header"><p class="eyebrow">Rule check</p><h2>What invisible rule are you obeying?</h2><p>A preference can matter without becoming a law about when you are allowed to relax, enjoy yourself, or move on.</p></div>
+      <div class="reality-form-grid">
+        <label>I can’t / shouldn’t…<input class="text-field" id="rcWantThing" placeholder="play a video game"></label>
+        <label>…until…<input class="text-field" id="rcMustThing" placeholder="the house is clean"></label>
+        <label>That condition is probably…<select class="select-field" id="rcRuleType"><option value="need">A real need with a real consequence</option><option value="preference">A preference that would feel nicer</option><option value="rule" selected>An internal rule I made</option><option value="unsure">I am not sure</option></select></label>
+        <label>A less rigid version could be…<input class="text-field" id="rcAltRule" placeholder="e.g. 20-minute reset, then I can game"></label>
+      </div>
+      <button class="primary-button" id="runRuleCheck">Reality-check the rule</button><div id="realityResult"></div>`;
+    document.getElementById('runRuleCheck').addEventListener('click', () => {
+      const want = document.getElementById('rcWantThing').value.trim() || 'do the thing I want';
+      const must = document.getElementById('rcMustThing').value.trim() || 'finish everything first';
+      const type = document.getElementById('rcRuleType').value;
+      const alt = document.getElementById('rcAltRule').value.trim();
+      let title, body, action, outcome, tone='neutral';
+      if (type === 'need') {
+        title = 'There may be a real requirement here.'; outcome = 'real need';
+        action = alt || 'Keep the rule only as strict as the real consequence requires.';
+        body = `Ask: <strong>what is the minimum condition that genuinely needs to be met?</strong> A real need can justify a boundary without requiring the most perfect version.`;
+      } else if (type === 'preference') {
+        title = 'This sounds more like a preference than a requirement.'; outcome = 'preference';
+        action = alt || `Let “${must}” be desirable without making it the price of “${want}.”`;
+        body = `You can prefer <strong>${escapeHtml(must)}</strong> and still choose to ${escapeHtml(want)} before it is perfect.`;
+      } else {
+        title = 'This looks like a permission rule.'; outcome = type === 'unsure' ? 'uncertain rule' : 'internal rule'; tone='warn';
+        action = alt || 'Replace the all-or-nothing condition with a concrete threshold.';
+        body = `Current rule: <strong>I shouldn’t ${escapeHtml(want)} until ${escapeHtml(must)}.</strong><br><br>${alt ? `More flexible version: <strong>${escapeHtml(alt)}</strong>` : 'Try: “I’ll do a reasonable amount, then I am allowed to stop.”'}`;
+      }
+      setRealityResult(title, body, tone, { title: 'Permission rule', summary: `“${want}” was being gated by “${must}.”`, action, context: 'Rule check', realityKind: 'rule', outcome });
+    });
+    return;
+  }
+
+  if (mode === 'review') {
+    workspace.innerHTML = `<div class="reality-form-header"><p class="eyebrow">Productivity accounting</p><h2>Where did your day actually go?</h2><p>Unfinished is not the same as unproductive. But “I had no time” is not always true either.</p></div>
+      <div class="reality-check-grid" id="rcDayActivities">
+        ${['Worked / job responsibilities','Gym / exercise','School / studying','Household chores','Errands / appointments','Cooking / meals / hygiene','Relationship / family time','Intentional rest'].map(item => `<label><input type="checkbox" value="${item}"> ${item}</label>`).join('')}
+      </div>
+      <div class="reality-form-grid">
+        <label>Roughly how much discretionary time did you have?<select class="select-field" id="rcFreeTime"><option value="0">Almost none</option><option value="1">Under 1 hour</option><option value="2">1–3 hours</option><option value="3">3+ hours</option></select></label>
+        <label>What is making the day feel “unproductive”?<input class="text-field" id="rcUnfinished" placeholder="e.g. the house is still messy"></label>
+      </div>
+      <button class="primary-button" id="runDayReview">Review the evidence</button><div id="realityResult"></div>`;
+    document.getElementById('runDayReview').addEventListener('click', () => {
+      const checked = [...document.querySelectorAll('#rcDayActivities input:checked')].map(input => input.value);
+      const free = +document.getElementById('rcFreeTime').value;
+      const unfinished = document.getElementById('rcUnfinished').value.trim() || 'something remained unfinished';
+      let title, body, action, outcome, tone;
+      if (checked.length >= 3 && free <= 1) {
+        outcome='full day'; tone='good'; title='This was a full day, even though something stayed unfinished.';
+        action='Treat the unfinished item as a scheduling choice for another time, not a verdict on the whole day.';
+        body = `You used meaningful capacity on <strong>${checked.map(escapeHtml).join(', ')}</strong> and had little discretionary time. “${escapeHtml(unfinished)}” is evidence of limited capacity—not proof that the day did not count.`;
+      } else if (free >= 3 && checked.length <= 2) {
+        outcome='possible avoidance'; tone='warn'; title='There may have been usable time you chose not to spend on it.';
+        action='Own the tradeoff without turning it into an identity judgment. If it matters, make the next version smaller and concrete.';
+        body = `“I had no time” probably is not the strongest explanation today. That does <strong>not</strong> mean “I am lazy”; it means the task lost the competition for your discretionary time.`;
+      } else {
+        outcome='mixed day'; tone='neutral'; title='The evidence is mixed.';
+        action='Ask whether the unfinished task truly deserved to outrank how you actually used the remaining time.';
+        body = `You did use capacity today, and you also had some discretionary time. Grade the tradeoff—not your entire character or the entire day.`;
+      }
+      setRealityResult(title, body, tone, { title: 'Productivity reality check', summary: `${checked.length} meaningful areas counted; ${unfinished} was still unfinished.`, action, context: 'Day review', realityKind: 'review', outcome });
+    });
+  }
 }
 
 function renderRecentEntries() {
@@ -1090,6 +1315,9 @@ function renderInsights() {
   if (approvalMentions >= 2) patterns.push(`Several entries involve judgment, approval, or other people’s reactions. A useful question may be: <strong>“What would I choose or feel if nobody needed me to manage their response?”</strong>`);
   const topFreeTimeMode = sortedCounts(countValues(freeTimeEntries.map(entry => entry.mode)))[0];
   if (topFreeTimeMode && freeTimeEntries.length >= 2) patterns.push(`Your free-time check-ins most often point toward <strong>${escapeHtml(topFreeTimeMode[0])}</strong>. That may be a recurring need lately—not a rule for what you should always choose.`);
+  const realityEntries = entries.filter(entry => entry.type === 'reality');
+  const topRealityOutcome = sortedCounts(countValues(realityEntries.map(entry => entry.outcome)))[0];
+  if (topRealityOutcome && realityEntries.length >= 2) patterns.push(`Across your Reality Checks, <strong>${escapeHtml(topRealityOutcome[0])}</strong> has shown up most often. Treat that as a working pattern to test—not a label about what is always happening.`);
   if (!patterns.length) patterns.push('You have enough entries to begin noticing patterns, but no single theme dominates yet. That is useful information too.');
   document.getElementById('patternCards').innerHTML = patterns.map(text => `<div class="pattern-card">${text}</div>`).join('');
 
@@ -1175,6 +1403,7 @@ function installEventHandlers() {
   document.querySelectorAll('[data-screen]').forEach(button => button.addEventListener('click', () => goToScreen(button.dataset.screen)));
   document.querySelectorAll('[data-go-screen]').forEach(button => button.addEventListener('click', () => goToScreen(button.dataset.goScreen)));
   document.querySelectorAll('[data-start-tool]').forEach(button => button.addEventListener('click', () => startTool(button.dataset.startTool)));
+  document.querySelectorAll('[data-reality-mode]').forEach(button => button.addEventListener('click', () => renderRealityMode(button.dataset.realityMode)));
   document.getElementById('quickCheckin').addEventListener('click', () => startTool('emotion'));
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalBack').addEventListener('click', goBackInModal);

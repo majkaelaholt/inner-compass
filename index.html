@@ -77,6 +77,12 @@
             <span class="tool-description">Match your free time to your actual energy, bandwidth, and craving—then choose rest, play, connection, creativity, or progress without ranking one as more worthy.</span>
             <span class="tool-link">Use the Free-Time Compass →</span>
           </button>
+          <button class="tool-card wide reality-tool" data-go-screen="reality">
+            <span class="tool-icon">⚖</span>
+            <span class="tool-title">Do I need a reality check?</span>
+            <span class="tool-description">Check whether your expectations fit the day, whether you are depleted or avoiding, what counts as enough, and which invisible rule is making rest feel forbidden.</span>
+            <span class="tool-link">Open Reality Check →</span>
+          </button>
           <button class="tool-card" data-start-tool="emotion">
             <span class="tool-icon">◌</span>
             <span class="tool-title">What am I feeling?</span>
@@ -140,12 +146,40 @@
         </div>
         <div class="tool-grid tools-page-grid">
           <button class="tool-card wide free-time-tool" data-start-tool="freetime"><span class="tool-icon">☕</span><span class="tool-title">What should I do right now?</span><span class="tool-description">Find the kind of downtime that fits your energy and needs, including intentional rest that does not have to earn its place.</span><span class="tool-link">Begin →</span></button>
+          <button class="tool-card wide reality-tool" data-go-screen="reality"><span class="tool-icon">⚖</span><span class="tool-title">Reality Check</span><span class="tool-description">Use time, energy, recent rest, and actual behavior to decide what is reasonable—without automatically excusing yourself or automatically demanding more.</span><span class="tool-link">Open page →</span></button>
           <button class="tool-card" data-start-tool="emotion"><span class="tool-icon">◌</span><span class="tool-title">What am I feeling?</span><span class="tool-description">Identify likely emotions and compare close alternatives.</span><span class="tool-link">Begin →</span></button>
           <button class="tool-card" data-start-tool="want"><span class="tool-icon">⌁</span><span class="tool-title">What do I want?</span><span class="tool-description">Clarify needs, preferences, boundaries, and desired outcomes.</span><span class="tool-link">Begin →</span></button>
           <button class="tool-card" data-start-tool="reaction"><span class="tool-icon">↻</span><span class="tool-title">Why did I react that way?</span><span class="tool-description">Untangle facts, interpretations, reactions, and needs.</span><span class="tool-link">Begin →</span></button>
           <button class="tool-card" data-start-tool="decision"><span class="tool-icon">⇄</span><span class="tool-title">Help me make a decision</span><span class="tool-description">Hear your own preference beneath anxiety and other opinions.</span><span class="tool-link">Begin →</span></button>
           <button class="tool-card wide" data-start-tool="discovery"><span class="tool-icon">✧</span><span class="tool-title">What am I learning about myself?</span><span class="tool-description">Build a grounded identity from lived evidence instead of labels you feel required to match.</span><span class="tool-link">Begin →</span></button>
         </div>
+      </section>
+
+      <section class="screen" id="screen-reality">
+        <div class="intro-card reality-intro">
+          <div>
+            <p class="eyebrow">Reality Check</p>
+            <h2>What is actually reasonable right now?</h2>
+            <p>Use this when your brain turns unfinished into “I failed,” rest into “I’m lazy,” or a preference into a rule. The goal is not to excuse everything or force productivity—it is to use better evidence.</p>
+          </div>
+          <button class="secondary-button small" data-go-screen="tools">← Guided tools</button>
+        </div>
+
+        <div class="reality-mode-grid" aria-label="Reality Check tools">
+          <button class="reality-mode-card" data-reality-mode="capacity"><span>⏳</span><strong>Does it fit today?</strong><small>Compare the task to the hours your day actually contains.</small></button>
+          <button class="reality-mode-card" data-reality-mode="state"><span>◐</span><strong>Rest or avoidance?</strong><small>Use recent rest, depletion, and task resistance as evidence.</small></button>
+          <button class="reality-mode-card" data-reality-mode="enough"><span>✓</span><strong>What counts as enough?</strong><small>Set a stopping point before “clean” becomes all-or-nothing.</small></button>
+          <button class="reality-mode-card" data-reality-mode="rule"><span>⚖</span><strong>What rule am I following?</strong><small>Separate real needs from preferences and permission rules.</small></button>
+          <button class="reality-mode-card" data-reality-mode="review"><span>☷</span><strong>Was I productive today?</strong><small>Account for where your time and capacity actually went.</small></button>
+        </div>
+
+        <article class="panel reality-workspace" id="realityWorkspace">
+          <div class="reality-placeholder">
+            <div class="large-symbol">⚖</div>
+            <h3>Pick the question closest to the argument in your head.</h3>
+            <p>This page does not give you a productivity score. It helps you distinguish a time problem, a capacity problem, an activation problem, and a too-rigid standard.</p>
+          </div>
+        </article>
       </section>
 
       <section class="screen" id="screen-insights">
@@ -175,6 +209,7 @@
             <button data-filter="reaction">Reactions</button>
             <button data-filter="decision">Decisions</button>
             <button data-filter="freetime">Free time</button>
+            <button data-filter="reality">Reality checks</button>
             <button data-filter="discovery">Discoveries</button>
           </div>
         </div>

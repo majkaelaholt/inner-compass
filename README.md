@@ -5,6 +5,7 @@ A mobile-first, installable self-awareness web app for:
 - Naming likely emotions through guided multiple-choice questions
 - Clarifying wants, needs, preferences, and boundaries
 - Choosing free-time activities based on current energy, mental bandwidth, available time, and emotional need—without treating rest as less worthy
+- Reality-checking time, capacity, avoidance vs. depletion, rigid permission rules, and all-or-nothing definitions of “done”
 - Understanding reactions as trigger → interpretation → protection → need
 - Reflecting on decisions without outsourcing the choice
 - Building an evidence-based record of what energizes, drains, fits, and matters to you
@@ -49,3 +50,12 @@ The **What should I do right now?** guide asks about available time, energy, men
 - History entries can now be edited to fix typos or revise the original reflection.
 - Entries can also receive dated follow-up notes without overwriting the original.
 - Emotion check-ins now suggest context-aware ways to soothe the feeling and respond with more choice. Relationship and family frustration includes communication-focused guidance rather than only generic calming advice.
+
+
+## Version 4 additions
+
+- Added a dedicated **Reality Check** page inside Inner Compass instead of keeping Reality Check as a separate app.
+- Includes five calibration tools: **Does it fit today?**, **Rest or avoidance?**, **What counts as enough?**, **What rule am I following?**, and **Was I productive today?**
+- Reality Check results can be saved into the same History as other Inner Compass reflections.
+- Repeated Reality Check outcomes can contribute to the Insights page as a tentative pattern.
+- Free-Time Compass remains separate inside the same app: Reality Check helps decide whether downtime is reasonable; Free-Time Compass helps choose what kind of downtime fits once you want it.
