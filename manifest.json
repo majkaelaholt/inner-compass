@@ -1,13 +1,21 @@
 {
   "name": "Inner Compass",
   "short_name": "Compass",
-  "description": "A private guided self-awareness app for emotions, wants, free-time choices, reality checks, reactions, decisions, and identity discoveries.",
+  "description": "A private daily mood, motivation, capacity, symptom, and self-awareness pattern tracker with guided reflection tools.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f1ed",
   "theme_color": "#8f6a74",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }

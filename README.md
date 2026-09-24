@@ -59,3 +59,16 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Reality Check results can be saved into the same History as other Inner Compass reflections.
 - Repeated Reality Check outcomes can contribute to the Insights page as a tentative pattern.
 - Free-Time Compass remains separate inside the same app: Reality Check helps decide whether downtime is reasonable; Free-Time Compass helps choose what kind of downtime fits once you want it.
+
+
+## Version 5 additions
+
+- Daily pattern tracking is now the main Inner Compass experience.
+- One editable day record can be updated throughout the day; changes auto-save locally.
+- Emotional day score is estimated from anchored questions and emotional signals instead of requiring an arbitrary 1–10 rating. A manual adjustment is limited to ±1.
+- Motivation and capacity are tracked separately from mood so high motivation cannot be misread as the cause of a lower emotional score.
+- Added changes-from-baseline, physical symptoms, functioning, context, and optional notes.
+- Added a calendar to visualize emotional scores, motivation/capacity shifts, symptoms, and imported history.
+- Added tentative pattern/rhythm analysis that waits for repeated clusters before offering a possible forecast. It does not label hormonal phases.
+- Added Bearable CSV import. Health-metric-only dates are ignored, and historical Bearable days are marked as imported.
+- Guided reflection, Free-Time Compass, and Reality Check remain available as secondary tools.

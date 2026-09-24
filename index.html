@@ -23,16 +23,16 @@
       </div>
 
       <nav class="side-nav">
-        <button class="nav-item active" data-screen="home"><span>⌂</span> Home</button>
-        <button class="nav-item" data-screen="tools"><span>◇</span> Guided tools</button>
-        <button class="nav-item" data-screen="insights"><span>⌁</span> Insights</button>
-        <button class="nav-item" data-screen="history"><span>☷</span> History</button>
+        <button class="nav-item active" data-screen="home"><span>◉</span> Today</button>
+        <button class="nav-item" data-screen="calendar"><span>▦</span> Calendar</button>
+        <button class="nav-item" data-screen="insights"><span>⌁</span> Patterns</button>
+        <button class="nav-item" data-screen="tools"><span>◇</span> Useful tools</button>
         <button class="nav-item" data-screen="settings"><span>⚙</span> Settings</button>
       </nav>
 
       <div class="privacy-note">
         <strong>Private by default</strong>
-        <span>Your entries stay in this browser unless you export them.</span>
+        <span>Your tracker data and reflections stay in this browser unless you export them.</span>
       </div>
     </aside>
 
@@ -40,109 +40,165 @@
       <header class="topbar">
         <div>
           <p class="eyebrow" id="screenEyebrow">Today</p>
-          <h1 id="screenTitle">Come back to yourself</h1>
+          <h1 id="screenTitle">Track what is changing</h1>
         </div>
-        <button class="icon-button" id="quickCheckin" aria-label="Start a quick check-in">＋</button>
+        <button class="icon-button" id="quickCheckin" aria-label="Jump to today’s tracker">◉</button>
       </header>
 
       <section class="screen active" id="screen-home">
-        <div class="hero-card">
-          <div class="hero-copy">
-            <span class="soft-label">A two-minute pause</span>
-            <h2>What is happening inside you?</h2>
-            <p>You do not need the perfect answer. Start with what you notice, and let the app help you narrow it down.</p>
-            <div class="hero-actions">
-              <button class="primary-button" data-start-tool="emotion">Find my feeling</button>
-              <button class="secondary-button" data-start-tool="want">Find what I want</button>
-            </div>
-          </div>
-          <div class="hero-orbit" aria-hidden="true">
-            <div class="orbit orbit-one"></div>
-            <div class="orbit orbit-two"></div>
-            <div class="center-gem">✦</div>
-          </div>
-        </div>
-
-        <div class="section-heading">
+        <div class="tracker-hero">
           <div>
-            <p class="eyebrow">Choose what you need</p>
-            <h2>Guided self-checks</h2>
+            <p class="eyebrow">Daily pattern tracker</p>
+            <h2 id="trackerDateHeading">Today</h2>
+            <p>Notice what changes from your normal. Check or uncheck things whenever you notice them; everything saves automatically.</p>
+          </div>
+          <div class="tracker-date-control">
+            <label for="trackerDate">Editing date</label>
+            <input id="trackerDate" type="date" />
+            <span id="trackerSaveStatus" class="save-status">Saved</span>
           </div>
         </div>
 
-        <div class="tool-grid" id="homeToolGrid">
-          <button class="tool-card wide free-time-tool" data-start-tool="freetime">
-            <span class="tool-icon">☕</span>
-            <span class="tool-title">What should I do right now?</span>
-            <span class="tool-description">Match your free time to your actual energy, bandwidth, and craving—then choose rest, play, connection, creativity, or progress without ranking one as more worthy.</span>
-            <span class="tool-link">Use the Free-Time Compass →</span>
-          </button>
-          <button class="tool-card wide reality-tool" data-go-screen="reality">
-            <span class="tool-icon">⚖</span>
-            <span class="tool-title">Do I need a reality check?</span>
-            <span class="tool-description">Check whether your expectations fit the day, whether you are depleted or avoiding, what counts as enough, and which invisible rule is making rest feel forbidden.</span>
-            <span class="tool-link">Open Reality Check →</span>
-          </button>
-          <button class="tool-card" data-start-tool="emotion">
-            <span class="tool-icon">◌</span>
-            <span class="tool-title">What am I feeling?</span>
-            <span class="tool-description">Narrow down emotions using energy, thoughts, body cues, and urges.</span>
-            <span class="tool-link">Start check-in →</span>
-          </button>
-          <button class="tool-card" data-start-tool="want">
-            <span class="tool-icon">⌁</span>
-            <span class="tool-title">What do I want?</span>
-            <span class="tool-description">Separate genuine preferences from fear, pressure, guilt, and approval.</span>
-            <span class="tool-link">Find the want →</span>
-          </button>
-          <button class="tool-card" data-start-tool="reaction">
-            <span class="tool-icon">↻</span>
-            <span class="tool-title">Why did I react that way?</span>
-            <span class="tool-description">Trace a reaction back to its trigger, interpretation, and unmet need.</span>
-            <span class="tool-link">Explore reaction →</span>
-          </button>
-          <button class="tool-card" data-start-tool="decision">
-            <span class="tool-icon">⇄</span>
-            <span class="tool-title">Help me make a decision</span>
-            <span class="tool-description">Compare relief, fear, values, and outside pressure without outsourcing the choice.</span>
-            <span class="tool-link">Think it through →</span>
-          </button>
-          <button class="tool-card wide" data-start-tool="discovery">
-            <span class="tool-icon">✧</span>
-            <span class="tool-title">What am I learning about myself?</span>
-            <span class="tool-description">Collect real-life evidence about what energizes, drains, matters to, and fits you.</span>
-            <span class="tool-link">Add a discovery →</span>
-          </button>
-        </div>
-
-        <div class="dashboard-grid">
-          <article class="panel">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Recent</p>
-                <h3>Your latest check-ins</h3>
+        <div class="tracker-layout">
+          <div class="tracker-main">
+            <article class="panel tracker-score-builder">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Emotional day</p>
+                  <h3>Let the app help build the score</h3>
+                </div>
+                <div class="day-score" aria-live="polite"><strong id="trackerMoodScore">5</strong><span>/10</span></div>
               </div>
-              <button class="text-button" data-go-screen="history">See all</button>
-            </div>
-            <div id="recentEntries" class="empty-state compact">
-              <span class="empty-icon">◇</span>
-              <p>Your saved check-ins will appear here.</p>
-            </div>
-          </article>
+              <p class="tracker-help">Start with the closest overall description. The score then responds to the emotional signals you log below — motivation and productivity do not change it.</p>
+              <div class="choice-section">
+                <span class="field-label">Compared with your usual emotional baseline, today has felt…</span>
+                <div class="anchor-choice-grid" id="moodAnchorChoices">
+                  <button type="button" data-mood-anchor="harder">Harder than usual</button>
+                  <button type="button" data-mood-anchor="typical">Typical / mixed</button>
+                  <button type="button" data-mood-anchor="better">Better than usual</button>
+                </div>
+              </div>
+              <div class="binary-grid mood-builder-toggles">
+                <button type="button" data-day-flag="negativeDominated">Negative feelings took up a meaningful part of the day</button>
+                <button type="button" data-day-flag="positiveStoodOut">Positive feelings genuinely stood out</button>
+                <button type="button" data-day-flag="emotionsInterfered">Emotions made normal responsibilities noticeably harder</button>
+              </div>
+              <div class="score-explanation" id="trackerScoreExplanation"></div>
+              <div class="score-nudge">
+                <span>Does the estimate feel slightly off?</span>
+                <div class="mini-segmented">
+                  <button type="button" data-score-adjust="-1">−1</button>
+                  <button type="button" data-score-adjust="0">Looks right</button>
+                  <button type="button" data-score-adjust="1">+1</button>
+                </div>
+                <small>You can only nudge it one point, so the score stays grounded in what you logged.</small>
+              </div>
+            </article>
 
-          <article class="panel prompt-panel">
-            <p class="eyebrow">Gentle reminder</p>
-            <blockquote id="dailyPrompt">“I do not need certainty to notice what feels true right now.”</blockquote>
-            <button class="secondary-button small" data-start-tool="discovery">Reflect on this</button>
-          </article>
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Capacity</p><h3>How usable did you feel?</h3></div></div>
+              <div class="dual-state-grid">
+                <fieldset class="state-fieldset">
+                  <legend>Motivation</legend>
+                  <div class="state-choice" data-choice-group="motivation">
+                    <button type="button" data-choice-value="low">↓ Low</button>
+                    <button type="button" data-choice-value="typical">Typical</button>
+                    <button type="button" data-choice-value="high">↑ High</button>
+                  </div>
+                </fieldset>
+                <fieldset class="state-fieldset">
+                  <legend>Overall capacity</legend>
+                  <div class="state-choice" data-choice-group="capacity">
+                    <button type="button" data-choice-value="low">↓ Lower</button>
+                    <button type="button" data-choice-value="typical">Typical</button>
+                    <button type="button" data-choice-value="high">↑ Higher</button>
+                  </div>
+                </fieldset>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Changes from normal</p><h3>What feels turned up or different?</h3></div></div>
+              <p class="tracker-help">Tap only what is noticeably stronger than your normal baseline.</p>
+              <div class="tracker-toggle-grid" id="changeToggles">
+                <button type="button" data-track-toggle="changes" data-value="anxious">More anxious / worried</button>
+                <button type="button" data-track-toggle="changes" data-value="irritable">More irritable</button>
+                <button type="button" data-track-toggle="changes" data-value="overwhelmed">Easily overwhelmed</button>
+                <button type="button" data-track-toggle="changes" data-value="brainFog">Brain fog</button>
+                <button type="button" data-track-toggle="changes" data-value="reactive">More emotionally reactive / sensitive</button>
+                <button type="button" data-track-toggle="changes" data-value="confident">More confident</button>
+                <button type="button" data-track-toggle="changes" data-value="patient">More patient</button>
+                <button type="button" data-track-toggle="changes" data-value="social">More social / talkative</button>
+                <button type="button" data-track-toggle="changes" data-value="affection">Wanted more affection / attention</button>
+                <button type="button" data-track-toggle="changes" data-value="interested">More interested in hobbies / projects</button>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">Physical signals</p><h3>Symptoms</h3></div><span class="panel-hint">Tap once = present · twice = unusually strong</span></div>
+              <div class="symptom-grid" id="symptomToggles">
+                <button type="button" data-symptom="cramping"><span>Cramping</span><small>Not logged</small></button>
+                <button type="button" data-symptom="bloating"><span>Bloating</span><small>Not logged</small></button>
+                <button type="button" data-symptom="headache"><span>Headache</span><small>Not logged</small></button>
+                <button type="button" data-symptom="breastTenderness"><span>Breast tenderness</span><small>Not logged</small></button>
+                <button type="button" data-symptom="indigestion"><span>GI / indigestion</span><small>Not logged</small></button>
+                <button type="button" data-symptom="bodyAches"><span>Body aches</span><small>Not logged</small></button>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">What happened</p><h3>Functioning & context</h3></div></div>
+              <div class="tracker-subsection">
+                <span class="field-label">Functioning</span>
+                <div class="tracker-toggle-grid compact-grid">
+                  <button type="button" data-track-toggle="functioning" data-value="homework">Did homework / studied</button>
+                  <button type="button" data-track-toggle="functioning" data-value="chores">Did chores</button>
+                  <button type="button" data-track-toggle="functioning" data-value="exercise">Exercised</button>
+                  <button type="button" data-track-toggle="functioning" data-value="homeworkHard">Homework was hard to initiate</button>
+                  <button type="button" data-track-toggle="functioning" data-value="choresHard">Chores were hard to initiate</button>
+                </div>
+              </div>
+              <div class="tracker-subsection">
+                <span class="field-label">Context that could affect the day</span>
+                <div class="tracker-toggle-grid compact-grid">
+                  <button type="button" data-track-toggle="context" data-value="poorSleep">Poor sleep</button>
+                  <button type="button" data-track-toggle="context" data-value="highStress">High outside stress</button>
+                  <button type="button" data-track-toggle="context" data-value="busy">Unusually busy</button>
+                  <button type="button" data-track-toggle="context" data-value="sick">Sick / unwell</button>
+                </div>
+              </div>
+              <label class="tracker-notes-label">
+                <span class="field-label">Anything worth remembering?</span>
+                <textarea id="trackerNotes" rows="3" placeholder="Optional: what happened, what you noticed, or why today felt different…"></textarea>
+              </label>
+            </article>
+          </div>
+
+          <aside class="tracker-side">
+            <article class="panel today-summary-card">
+              <p class="eyebrow">At a glance</p>
+              <h3 id="trackerDayLabel">Typical / mixed</h3>
+              <div class="summary-state-list" id="trackerStateSummary"></div>
+              <button class="secondary-button small" type="button" data-go-screen="calendar">See it on the calendar</button>
+            </article>
+            <article class="panel pattern-preview">
+              <p class="eyebrow">Pattern watch</p>
+              <h3>Collect first, predict later</h3>
+              <p id="trackerPatternPreview">Once you have enough repeated data, Inner Compass can look for recurring low-capacity, high-motivation, emotional, and physical-symptom clusters without pretending it knows your exact cycle phase.</p>
+              <button class="text-button" type="button" data-go-screen="insights">Open patterns →</button>
+            </article>
+          </aside>
         </div>
       </section>
 
       <section class="screen" id="screen-tools">
-        <div class="intro-card">
-          <p class="eyebrow">Pick the closest question</p>
-          <h2>You can start with uncertainty</h2>
-          <p>Each guide gives you possibilities to consider. You stay in charge of what fits and what does not.</p>
+        <div class="intro-card tools-intro-row">
+          <div>
+            <p class="eyebrow">Useful tools</p>
+            <h2>Use these when you need more than tracking</h2>
+            <p>The tracker is the main record. These guides are here for moments when you want help naming, reality-checking, deciding, or reflecting.</p>
+          </div>
+          <button class="secondary-button small" data-go-screen="history">Reflection history</button>
         </div>
         <div class="tool-grid tools-page-grid">
           <button class="tool-card wide free-time-tool" data-start-tool="freetime"><span class="tool-icon">☕</span><span class="tool-title">What should I do right now?</span><span class="tool-description">Find the kind of downtime that fits your energy and needs, including intentional rest that does not have to earn its place.</span><span class="tool-link">Begin →</span></button>
@@ -182,20 +238,48 @@
         </article>
       </section>
 
+      <section class="screen" id="screen-calendar">
+        <div class="calendar-toolbar panel">
+          <div>
+            <p class="eyebrow">Visual pattern map</p>
+            <h2 id="calendarTitle">Month</h2>
+            <p>Look for runs and clusters instead of judging individual days.</p>
+          </div>
+          <div class="calendar-actions">
+            <button type="button" class="icon-button subtle calendar-nav" id="calendarPrev" aria-label="Previous month">←</button>
+            <button type="button" class="secondary-button small" id="calendarToday">Today</button>
+            <button type="button" class="icon-button subtle calendar-nav" id="calendarNext" aria-label="Next month">→</button>
+          </div>
+        </div>
+        <div class="calendar-legend">
+          <span><i class="legend-swatch low"></i> harder day</span>
+          <span><i class="legend-swatch good"></i> better day</span>
+          <span><b>M↑/↓</b> motivation</span>
+          <span><b>C↑/↓</b> capacity</span>
+          <span><b>●</b> physical symptom</span>
+          <span><b>B</b> imported Bearable day</span>
+        </div>
+        <article class="panel calendar-panel">
+          <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+          <div class="calendar-grid" id="trackerCalendar"></div>
+        </article>
+        <div class="calendar-summary-grid" id="calendarSummary"></div>
+      </section>
+
       <section class="screen" id="screen-insights">
         <div id="insightsEmpty" class="intro-card centered">
           <div class="large-symbol">⌁</div>
-          <h2>Your patterns need a little evidence</h2>
-          <p>Complete at least three check-ins. Then this page can reflect recurring emotions, wants, contexts, and discoveries back to you.</p>
-          <button class="primary-button" data-start-tool="emotion">Start a check-in</button>
+          <h2>Patterns need repeated evidence</h2>
+          <p>Keep logging normally. Inner Compass will describe what is actually repeating before it tries to forecast anything.</p>
+          <button class="primary-button" data-go-screen="home">Log today</button>
         </div>
         <div id="insightsContent" class="hidden">
           <div class="stats-row" id="statsRow"></div>
           <div class="insight-grid">
-            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Most frequent</p><h3>Emotions you have named</h3></div></div><div id="emotionBars" class="bar-list"></div></article>
-            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Often underneath</p><h3>Wants and needs</h3></div></div><div id="needChips" class="chip-cloud"></div></article>
-            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Possible pattern</p><h3>What your entries suggest</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
-            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Evidence about you</p><h3>Identity discoveries</h3></div></div><div id="discoverySummary" class="discovery-summary"></div></article>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Most common</p><h3>Changes from your baseline</h3></div></div><div id="emotionBars" class="bar-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Often together</p><h3>Co-occurring signals</h3></div></div><div id="needChips" class="chip-cloud"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Possible rhythm</p><h3>What the timeline suggests</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Reflection record</p><h3>What the guided tools are adding</h3></div><button class="text-button" data-go-screen="history">View reflection history</button></div><div id="discoverySummary" class="discovery-summary"></div></article>
           </div>
         </div>
       </section>
@@ -227,10 +311,17 @@
               <label class="secondary-button file-label">Import backup<input id="importData" type="file" accept="application/json" /></label>
             </div>
           </article>
+          <article class="panel settings-card import-card">
+            <p class="eyebrow">Bring your history</p>
+            <h3>Import Bearable CSV</h3>
+            <p>Import your existing Bearable export so your mood, symptoms, factors, sleep, and notes can appear on the calendar. Health-metric-only days are ignored.</p>
+            <label class="secondary-button file-label">Choose Bearable CSV<input id="importBearable" type="file" accept=".csv,text/csv" /></label>
+            <p class="gentle-note" id="bearableImportStatus">The importer adds or merges days; it does not erase your Inner Compass reflections.</p>
+          </article>
           <article class="panel settings-card">
             <p class="eyebrow">Privacy</p>
             <h3>Stored on this device</h3>
-            <p>Inner Compass has no account, server, tracking pixel, or cloud database. Clearing browser storage can remove entries, so export backups occasionally.</p>
+            <p>Inner Compass has no account, server, tracking pixel, or cloud database. Clearing browser storage can remove tracker data and reflections, so export backups occasionally.</p>
           </article>
           <article class="panel settings-card danger-card">
             <p class="eyebrow">Reset</p>
@@ -248,10 +339,10 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Mobile navigation">
-      <button class="active" data-screen="home"><span>⌂</span><small>Home</small></button>
+      <button class="active" data-screen="home"><span>◉</span><small>Today</small></button>
+      <button data-screen="calendar"><span>▦</span><small>Calendar</small></button>
+      <button data-screen="insights"><span>⌁</span><small>Patterns</small></button>
       <button data-screen="tools"><span>◇</span><small>Tools</small></button>
-      <button data-screen="insights"><span>⌁</span><small>Insights</small></button>
-      <button data-screen="history"><span>☷</span><small>History</small></button>
       <button data-screen="settings"><span>⚙</span><small>Settings</small></button>
     </nav>
   </div>

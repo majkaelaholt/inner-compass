@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 4;
+const APP_VERSION = 5;
 
 const emotionSupport = {
   Frustration: {
@@ -438,11 +438,12 @@ const discoveryCategories = {
 };
 
 const screenMeta = {
-  home: ['Today', 'Come back to yourself'],
-  tools: ['Guided reflection', 'Choose what you need'],
+  home: ['Today', 'Track what is changing'],
+  calendar: ['Calendar', 'See the pattern over time'],
+  tools: ['Useful tools', 'Use what helps'],
   reality: ['Reality Check', 'What is actually reasonable?'],
-  insights: ['Patterns', 'What your entries are teaching you'],
-  history: ['Your record', 'Past check-ins and discoveries'],
+  insights: ['Patterns', 'What your days are teaching you'],
+  history: ['Reflection history', 'Past guided check-ins and discoveries'],
   settings: ['Inner Compass', 'Privacy and data']
 };
 
@@ -451,18 +452,24 @@ const app = {
   screen: 'home',
   historyFilter: 'all',
   session: null,
-  realityDraft: null
+  realityDraft: null,
+  trackerDate: localDateKey(new Date()),
+  calendarCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 };
 
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { version: APP_VERSION, entries: [] };
+    if (!raw) return { version: APP_VERSION, entries: [], trackerDays: {} };
     const parsed = JSON.parse(raw);
-    return { version: APP_VERSION, entries: Array.isArray(parsed.entries) ? parsed.entries : [] };
+    return {
+      version: APP_VERSION,
+      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+      trackerDays: parsed.trackerDays && typeof parsed.trackerDays === 'object' ? parsed.trackerDays : {}
+    };
   } catch (error) {
     console.error('Unable to load saved data:', error);
-    return { version: APP_VERSION, entries: [] };
+    return { version: APP_VERSION, entries: [], trackerDays: {} };
   }
 }
 
@@ -1159,6 +1166,7 @@ function renderRealityMode(mode) {
 
 function renderRecentEntries() {
   const el = document.getElementById('recentEntries');
+  if (!el) return;
   const entries = app.data.entries.slice(0, 3);
   if (!entries.length) {
     el.className = 'empty-state compact';
@@ -1268,76 +1276,311 @@ function sortedCounts(counts) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 }
 
-function renderInsights() {
-  const entries = app.data.entries;
-  const empty = document.getElementById('insightsEmpty');
-  const content = document.getElementById('insightsContent');
-  if (entries.length < 3) {
-    empty.classList.remove('hidden');
-    content.classList.add('hidden');
-    return;
-  }
-  empty.classList.add('hidden');
-  content.classList.remove('hidden');
+function renderInsights() { renderTrackerInsights(); }
 
-  const emotionEntries = entries.filter(entry => entry.type === 'emotion');
-  const discoveryEntries = entries.filter(entry => entry.type === 'discovery');
-  const needs = entries.flatMap(entry => {
-    if (!entry.need || entry.type === 'freetime') return [];
-    return entry.need.split(/,| or /).map(value => value.trim().replace(/^a /, '')).filter(Boolean);
+
+const TRACKER_CHANGE_LABELS = {
+  anxious: 'More anxious / worried', irritable: 'More irritable', overwhelmed: 'Easily overwhelmed', brainFog: 'Brain fog',
+  reactive: 'More emotionally reactive', confident: 'More confident', patient: 'More patient', social: 'More social',
+  affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects'
+};
+const TRACKER_FUNCTION_LABELS = { homework: 'Did homework', chores: 'Did chores', exercise: 'Exercised', homeworkHard: 'Homework hard to initiate', choresHard: 'Chores hard to initiate' };
+const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
+const TRACKER_SYMPTOM_LABELS = { cramping: 'Cramping', bloating: 'Bloating', headache: 'Headache', breastTenderness: 'Breast tenderness', indigestion: 'GI / indigestion', bodyAches: 'Body aches' };
+
+function localDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function dateFromKey(key) {
+  const [y,m,d] = String(key).split('-').map(Number);
+  return new Date(y || 2000, (m || 1) - 1, d || 1);
+}
+function trackerDayDefaults() {
+  return { moodAnchor: null, moodCustomTouched: false, dayFlags: {}, scoreAdjustment: 0, motivation: 'typical', capacity: 'typical', changes: [], symptoms: {}, functioning: [], context: [], notes: '', customTouched: false, updatedAt: null };
+}
+function getTrackerDay(key, create = false) {
+  app.data.trackerDays = app.data.trackerDays || {};
+  const existing = app.data.trackerDays[key];
+  if (existing) return existing;
+  if (!create) return null;
+  const day = trackerDayDefaults();
+  app.data.trackerDays[key] = day;
+  return day;
+}
+function normalizedTrackerDay(day) {
+  return Object.assign(trackerDayDefaults(), day || {}, {
+    dayFlags: Object.assign({}, day?.dayFlags || {}),
+    changes: Array.isArray(day?.changes) ? day.changes : [],
+    symptoms: Object.assign({}, day?.symptoms || {}),
+    functioning: Array.isArray(day?.functioning) ? day.functioning : [],
+    context: Array.isArray(day?.context) ? day.context : []
   });
-  const freeTimeEntries = entries.filter(entry => entry.type === 'freetime');
-  const contexts = emotionEntries.map(entry => entry.context).filter(Boolean);
-  const topEmotion = sortedCounts(countValues(emotionEntries.map(entry => entry.title)))[0];
-  const topNeed = sortedCounts(countValues(needs))[0];
-  const topContext = sortedCounts(countValues(contexts))[0];
+}
+function trackerHasMeaningfulData(day) {
+  if (!day) return false;
+  return Boolean(day.customTouched || day.importedBearable || (day.legacyMoodValues && day.legacyMoodValues.length));
+}
+function saveTrackerDay(day) {
+  day.customTouched = true;
+  day.updatedAt = new Date().toISOString();
+  app.data.trackerDays[app.trackerDate] = day;
+  saveData();
+  const status = document.getElementById('trackerSaveStatus');
+  if (status) { status.textContent = 'Saved just now'; clearTimeout(saveTrackerDay.timer); saveTrackerDay.timer = setTimeout(() => { if (status) status.textContent = 'Saved'; }, 1500); }
+  renderTrackerHome(false);
+  renderCalendar();
+  renderTrackerInsights();
+}
+function calculateTrackerMood(day) {
+  const d = normalizedTrackerDay(day);
+  if (!d.moodCustomTouched && d.importedBearable && Array.isArray(d.legacyMoodValues) && d.legacyMoodValues.length) {
+    const avg = d.legacyMoodValues.reduce((a,b) => a + Number(b || 0), 0) / d.legacyMoodValues.length;
+    return { score: Math.max(1, Math.min(10, Math.round(avg * 10) / 10)), parts: [`Imported Bearable mood average (${d.legacyMoodValues.join(', ')})`], legacy: true };
+  }
+  if (!d.moodAnchor) return { score: null, parts: ['Choose the closest emotional baseline when you are ready to summarize the day.'], legacy: false };
+  let score = d.moodAnchor === 'harder' ? 4 : d.moodAnchor === 'better' ? 7 : 5;
+  const parts = [d.moodAnchor === 'harder' ? 'Harder-than-usual baseline' : d.moodAnchor === 'better' ? 'Better-than-usual baseline' : 'Typical / mixed baseline'];
+  if (d.dayFlags.negativeDominated) { score -= 1; parts.push('negative feelings took up a lot of the day'); }
+  if (d.dayFlags.positiveStoodOut) { score += 1; parts.push('positive feelings stood out'); }
+  if (d.dayFlags.emotionsInterfered) { score -= 1; parts.push('emotions interfered with normal responsibilities'); }
+  const negativeWeights = { anxious: -.75, irritable: -.75, overwhelmed: -.75, reactive: -.6 };
+  const positiveWeights = { confident: .6, patient: .4, social: .4, affection: .3, interested: .5 };
+  let neg = 0, pos = 0;
+  d.changes.forEach(key => { if (negativeWeights[key]) neg += negativeWeights[key]; if (positiveWeights[key]) pos += positiveWeights[key]; });
+  neg = Math.max(-1.25, neg); pos = Math.min(1, pos);
+  score += neg + pos;
+  if (neg < 0) parts.push('negative emotional signals were logged');
+  if (pos > 0) parts.push('positive emotional signals were logged');
+  const adj = Math.max(-1, Math.min(1, Number(d.scoreAdjustment) || 0));
+  if (adj) { score += adj; parts.push(`you nudged the estimate ${adj > 0 ? 'up' : 'down'} one point`); }
+  return { score: Math.max(1, Math.min(10, Math.round(score))), parts, legacy: false };
+}
+function moodLabel(score) {
+  if (score == null) return 'Not scored yet';
+  if (score <= 2) return 'Very hard day';
+  if (score <= 4) return 'Harder-than-usual day';
+  if (score <= 6) return 'Typical / mixed day';
+  if (score <= 8) return 'Good day';
+  return 'Exceptionally good day';
+}
+function setButtonSelected(button, selected) { if (button) button.classList.toggle('selected', Boolean(selected)); }
 
-  document.getElementById('statsRow').innerHTML = [
-    [entries.length, 'Total entries'],
-    [emotionEntries.length, 'Feelings named'],
-    [discoveryEntries.length, 'Self-discoveries'],
-    [new Set(entries.map(entry => new Date(entry.createdAt).toDateString())).size, 'Days checked in']
-  ].map(([value,label]) => `<div class="stat-card"><span class="stat-value">${value}</span><span class="stat-label">${label}</span></div>`).join('');
+function renderTrackerHome(preserveNotesFocus = true) {
+  const dateInput = document.getElementById('trackerDate');
+  if (!dateInput) return;
+  dateInput.value = app.trackerDate;
+  const dateObj = dateFromKey(app.trackerDate);
+  const today = localDateKey(new Date());
+  const heading = document.getElementById('trackerDateHeading');
+  if (heading) heading.textContent = app.trackerDate === today ? 'Today' : new Intl.DateTimeFormat(undefined, { weekday:'long', month:'long', day:'numeric' }).format(dateObj);
+  const actual = getTrackerDay(app.trackerDate, false);
+  const day = normalizedTrackerDay(actual);
+  const mood = calculateTrackerMood(actual || day);
+  document.getElementById('trackerMoodScore').textContent = mood.score == null ? '—' : mood.score;
+  document.getElementById('trackerDayLabel').textContent = moodLabel(mood.score);
+  document.querySelectorAll('[data-mood-anchor]').forEach(btn => setButtonSelected(btn, !mood.legacy && btn.dataset.moodAnchor === day.moodAnchor));
+  document.querySelectorAll('[data-day-flag]').forEach(btn => setButtonSelected(btn, Boolean(day.dayFlags[btn.dataset.dayFlag])));
+  document.querySelectorAll('[data-score-adjust]').forEach(btn => setButtonSelected(btn, Number(btn.dataset.scoreAdjust) === Number(day.scoreAdjustment || 0)));
+  document.querySelectorAll('[data-choice-group]').forEach(group => {
+    const key = group.dataset.choiceGroup;
+    group.querySelectorAll('[data-choice-value]').forEach(btn => setButtonSelected(btn, day[key] === btn.dataset.choiceValue));
+  });
+  document.querySelectorAll('[data-track-toggle]').forEach(btn => {
+    const bucket = btn.dataset.trackToggle;
+    setButtonSelected(btn, Array.isArray(day[bucket]) && day[bucket].includes(btn.dataset.value));
+  });
+  document.querySelectorAll('[data-symptom]').forEach(btn => {
+    const level = Number(day.symptoms[btn.dataset.symptom] || 0);
+    btn.classList.toggle('present', level === 1);
+    btn.classList.toggle('strong', level >= 2);
+    const small = btn.querySelector('small');
+    if (small) small.textContent = level >= 2 ? 'Unusually strong' : level === 1 ? 'Present' : 'Not logged';
+    btn.setAttribute('aria-pressed', level ? 'true' : 'false');
+  });
+  const notes = document.getElementById('trackerNotes');
+  if (notes && (!preserveNotesFocus || document.activeElement !== notes)) notes.value = day.notes || '';
+  const expl = document.getElementById('trackerScoreExplanation');
+  if (expl) expl.innerHTML = `<strong>${mood.legacy ? 'Imported score' : mood.score == null ? 'Score not set yet' : 'Why this estimate'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.legacy ? '<small>Set an emotional baseline on this day if you want to replace the old Bearable average with the new scoring method.</small>' : ''}`;
+  const summary = [];
+  if (day.motivation !== 'typical') summary.push(`<span class="state-chip">Motivation ${day.motivation === 'high' ? '↑ high' : '↓ low'}</span>`);
+  if (day.capacity !== 'typical') summary.push(`<span class="state-chip">Capacity ${day.capacity === 'high' ? '↑ high' : '↓ low'}</span>`);
+  day.changes.slice(0,5).forEach(x => summary.push(`<span class="state-chip">${escapeHtml(TRACKER_CHANGE_LABELS[x] || x)}</span>`));
+  const symptomCount = Object.values(day.symptoms).filter(Boolean).length;
+  if (symptomCount) summary.push(`<span class="state-chip">${symptomCount} physical symptom${symptomCount===1?'':'s'}</span>`);
+  if (day.importedBearable) summary.push('<span class="state-chip imported-chip">Bearable history</span>');
+  document.getElementById('trackerStateSummary').innerHTML = summary.join('') || '<span class="gentle-note">Nothing unusual logged yet. Typical days are useful data too.</span>';
+  const preview = document.getElementById('trackerPatternPreview');
+  if (preview) preview.textContent = patternPreviewText();
+}
 
-  const emotionCounts = sortedCounts(countValues(emotionEntries.map(entry => entry.title))).slice(0, 6);
-  const maxEmotion = emotionCounts[0]?.[1] || 1;
-  document.getElementById('emotionBars').innerHTML = emotionCounts.length
-    ? emotionCounts.map(([name,count]) => `<div class="bar-row"><span>${escapeHtml(name)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(10,(count/maxEmotion)*100)}%"></div></div><strong>${count}</strong></div>`).join('')
-    : '<p class="gentle-note">Save emotion check-ins to see this pattern.</p>';
+function updateTrackerArray(bucket, value) {
+  const day = normalizedTrackerDay(getTrackerDay(app.trackerDate, true));
+  const set = new Set(day[bucket] || []);
+  set.has(value) ? set.delete(value) : set.add(value);
+  day[bucket] = [...set];
+  saveTrackerDay(day);
+}
+function installTrackerHandlers() {
+  const dateInput = document.getElementById('trackerDate');
+  if (dateInput) dateInput.addEventListener('change', () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) return; app.trackerDate = dateInput.value; renderTrackerHome(false); });
+  document.querySelectorAll('[data-mood-anchor]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.moodAnchor=btn.dataset.moodAnchor; day.moodCustomTouched=true; saveTrackerDay(day); }));
+  document.querySelectorAll('[data-day-flag]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const k=btn.dataset.dayFlag; day.dayFlags[k]=!day.dayFlags[k]; day.moodCustomTouched=true; saveTrackerDay(day); }));
+  document.querySelectorAll('[data-score-adjust]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.scoreAdjustment=Number(btn.dataset.scoreAdjust); day.moodCustomTouched=true; saveTrackerDay(day); }));
+  document.querySelectorAll('[data-choice-group] [data-choice-value]').forEach(btn => btn.addEventListener('click', () => { const group=btn.closest('[data-choice-group]').dataset.choiceGroup; const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day[group]=btn.dataset.choiceValue; saveTrackerDay(day); }));
+  document.querySelectorAll('[data-track-toggle]').forEach(btn => btn.addEventListener('click', () => updateTrackerArray(btn.dataset.trackToggle, btn.dataset.value)));
+  document.querySelectorAll('[data-symptom]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const key=btn.dataset.symptom; const current=Number(day.symptoms[key]||0); day.symptoms[key]=current>=2?0:current+1; if (!day.symptoms[key]) delete day.symptoms[key]; saveTrackerDay(day); }));
+  const notes=document.getElementById('trackerNotes');
+  if (notes) notes.addEventListener('input', () => { clearTimeout(notes._saveTimer); notes._saveTimer=setTimeout(() => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.notes=notes.value.trim(); saveTrackerDay(day); }, 350); });
+  const prev=document.getElementById('calendarPrev'), next=document.getElementById('calendarNext'), today=document.getElementById('calendarToday');
+  if (prev) prev.addEventListener('click',()=>{app.calendarCursor=new Date(app.calendarCursor.getFullYear(),app.calendarCursor.getMonth()-1,1);renderCalendar();});
+  if (next) next.addEventListener('click',()=>{app.calendarCursor=new Date(app.calendarCursor.getFullYear(),app.calendarCursor.getMonth()+1,1);renderCalendar();});
+  if (today) today.addEventListener('click',()=>{const n=new Date();app.calendarCursor=new Date(n.getFullYear(),n.getMonth(),1);renderCalendar();});
+  const cal=document.getElementById('trackerCalendar');
+  if (cal) cal.addEventListener('click',e=>{const cell=e.target.closest('[data-calendar-date]'); if(!cell)return; app.trackerDate=cell.dataset.calendarDate; goToScreen('home'); renderTrackerHome(false);});
+}
 
-  document.getElementById('needChips').innerHTML = sortedCounts(countValues(needs)).slice(0, 10).map(([name,count]) => `<span class="insight-chip">${escapeHtml(name)} · ${count}</span>`).join('') || '<p class="gentle-note">Needs will appear after feeling and reaction check-ins.</p>';
+function renderCalendar() {
+  const grid=document.getElementById('trackerCalendar'); if(!grid)return;
+  const y=app.calendarCursor.getFullYear(), m=app.calendarCursor.getMonth();
+  const title=document.getElementById('calendarTitle'); if(title)title.textContent=new Intl.DateTimeFormat(undefined,{month:'long',year:'numeric'}).format(app.calendarCursor);
+  const first=new Date(y,m,1), daysInMonth=new Date(y,m+1,0).getDate();
+  const cells=[]; for(let i=0;i<first.getDay();i++)cells.push('<div class="calendar-blank"></div>');
+  const monthDays=[];
+  for(let d=1;d<=daysInMonth;d++){
+    const key=localDateKey(new Date(y,m,d)); const day=getTrackerDay(key,false); const has=trackerHasMeaningfulData(day); if(has)monthDays.push(day);
+    const mood=has?calculateTrackerMood(day):null;
+    const cls=mood&&mood.score!=null?(mood.score<=4?' mood-low':mood.score>=7?' mood-good':' mood-neutral'):'';
+    const n=normalizedTrackerDay(day);
+    const symptom=Object.values(n.symptoms||{}).some(Boolean);
+    const markers=[];
+    if(n.motivation==='high')markers.push('M↑'); else if(n.motivation==='low')markers.push('M↓');
+    if(n.capacity==='high')markers.push('C↑'); else if(n.capacity==='low')markers.push('C↓');
+    if(symptom)markers.push('●');
+    if(n.importedBearable)markers.push('B');
+    const todayClass=key===localDateKey(new Date())?' today':'';
+    cells.push(`<button type="button" class="calendar-day${cls}${todayClass}" data-calendar-date="${key}" aria-label="${key}${mood&&mood.score!=null?`, emotional score ${mood.score}`:''}"><span class="calendar-date-num">${d}</span>${mood&&mood.score!=null?`<strong>${mood.score}</strong>`:'<span class="no-score">—</span>'}<small>${markers.join(' ')}</small></button>`);
+  }
+  grid.innerHTML=cells.join('');
+  const summary=document.getElementById('calendarSummary');
+  if(summary){
+    const scored=monthDays.filter(Boolean).map(calculateTrackerMood).filter(x=>x.score!=null);
+    const avg=scored.length?(scored.reduce((a,b)=>a+Number(b.score),0)/scored.length).toFixed(1):'—';
+    const highMot=monthDays.filter(x=>normalizedTrackerDay(x).motivation==='high').length;
+    const lowCap=monthDays.filter(x=>normalizedTrackerDay(x).capacity==='low').length;
+    const symptomDays=monthDays.filter(x=>Object.values(normalizedTrackerDay(x).symptoms).some(Boolean)).length;
+    summary.innerHTML=[[monthDays.length,'days logged'],[avg,'average emotional score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days'],[symptomDays,'days with physical symptoms']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
+  }
+}
 
-  const patterns = [];
-  if (topEmotion) patterns.push(`Your most frequently named emotion is <strong>${escapeHtml(topEmotion[0])}</strong> (${topEmotion[1]} check-in${topEmotion[1] === 1 ? '' : 's'}). This is a prompt to investigate, not a permanent trait.`);
-  if (topNeed) patterns.push(`<strong>${escapeHtml(topNeed[0])}</strong> appears often underneath your entries. Notice whether you tend to recognize it early or only after distress builds.`);
-  if (topContext) patterns.push(`Feelings are showing up most often around <strong>${escapeHtml(topContext[0])}</strong>. That context may deserve more specific reflection or support.`);
-  const approvalMentions = entries.filter(entry => JSON.stringify(entry.answers || {}).toLowerCase().includes('approval') || JSON.stringify(entry.answers || {}).toLowerCase().includes('judg')).length;
-  if (approvalMentions >= 2) patterns.push(`Several entries involve judgment, approval, or other people’s reactions. A useful question may be: <strong>“What would I choose or feel if nobody needed me to manage their response?”</strong>`);
-  const topFreeTimeMode = sortedCounts(countValues(freeTimeEntries.map(entry => entry.mode)))[0];
-  if (topFreeTimeMode && freeTimeEntries.length >= 2) patterns.push(`Your free-time check-ins most often point toward <strong>${escapeHtml(topFreeTimeMode[0])}</strong>. That may be a recurring need lately—not a rule for what you should always choose.`);
-  const realityEntries = entries.filter(entry => entry.type === 'reality');
-  const topRealityOutcome = sortedCounts(countValues(realityEntries.map(entry => entry.outcome)))[0];
-  if (topRealityOutcome && realityEntries.length >= 2) patterns.push(`Across your Reality Checks, <strong>${escapeHtml(topRealityOutcome[0])}</strong> has shown up most often. Treat that as a working pattern to test—not a label about what is always happening.`);
-  if (!patterns.length) patterns.push('You have enough entries to begin noticing patterns, but no single theme dominates yet. That is useful information too.');
-  document.getElementById('patternCards').innerHTML = patterns.map(text => `<div class="pattern-card">${text}</div>`).join('');
+function daySignals(day) {
+  const d=normalizedTrackerDay(day); const out=[];
+  if(d.motivation==='high')out.push(['motivation-high','High motivation']); if(d.motivation==='low')out.push(['motivation-low','Low motivation']);
+  if(d.capacity==='high')out.push(['capacity-high','Higher capacity']); if(d.capacity==='low')out.push(['capacity-low','Lower capacity']);
+  d.changes.forEach(k=>out.push([`change-${k}`,TRACKER_CHANGE_LABELS[k]||k]));
+  Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
+  return out;
+}
+function findClusters(dateKeys, qualifies) {
+  const dates=dateKeys.filter(k=>qualifies(getTrackerDay(k,false))).map(dateFromKey).sort((a,b)=>a-b); if(!dates.length)return[];
+  const clusters=[[dates[0]]];
+  for(let i=1;i<dates.length;i++){const gap=Math.round((dates[i]-dates[i-1])/86400000); if(gap<=2)clusters[clusters.length-1].push(dates[i]); else clusters.push([dates[i]]);}
+  return clusters;
+}
+function median(values){if(!values.length)return null; const a=[...values].sort((x,y)=>x-y); const mid=Math.floor(a.length/2); return a.length%2?a[mid]:(a[mid-1]+a[mid])/2;}
+function rhythmAnalysis(days) {
+  const keys=days.map(([k])=>k);
+  const downClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.motivation==='low')n++; if(d.capacity==='low')n++; ['anxious','irritable','overwhelmed','reactive'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
+  const starts=downClusters.map(c=>c[0]);
+  const intervals=starts.slice(1).map((d,i)=>Math.round((d-starts[i])/86400000));
+  const plausible=intervals.filter(x=>x>=18&&x<=40);
+  if(starts.length>=3 && plausible.length===intervals.length && Math.max(...intervals)-Math.min(...intervals)<=10){
+    const med=Math.round(median(intervals)); const next=new Date(starts[starts.length-1]); next.setDate(next.getDate()+med);
+    return {level:'possible', text:`Your stronger low-state clusters have started about every ${med} days so far. The next similar window would land around ${new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(next)} if the pattern continues. Treat this as a heads-up, not a cycle diagnosis.`};
+  }
+  if(starts.length===2 && intervals[0]>=18&&intervals[0]<=40) return {level:'early', text:`Two stronger low-state clusters began ${intervals[0]} days apart. That is an early hint worth watching, but two clusters are not enough to call it a repeating rhythm.`};
+  return {level:'none', text:`No reliable recurring interval yet. That is expected early on; the app needs multiple separate low-state clusters before forecasting anything.`};
+}
+function patternPreviewText(){
+  const days=Object.entries(app.data.trackerDays||{}).filter(([,d])=>trackerHasMeaningfulData(d)).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(days.length<7)return `${days.length} day${days.length===1?'':'s'} logged so far. Keep collecting without trying to force a cycle phase.`;
+  return rhythmAnalysis(days).text;
+}
+function renderTrackerInsights(){
+  const empty=document.getElementById('insightsEmpty'), content=document.getElementById('insightsContent'); if(!empty||!content)return;
+  const days=Object.entries(app.data.trackerDays||{}).filter(([,d])=>trackerHasMeaningfulData(d)).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(days.length<3){empty.classList.remove('hidden');content.classList.add('hidden');return;}
+  empty.classList.add('hidden');content.classList.remove('hidden');
+  const scored=days.map(([,d])=>calculateTrackerMood(d)).filter(x=>x.score!=null);
+  const avg=scored.length?(scored.reduce((a,b)=>a+Number(b.score),0)/scored.length).toFixed(1):'—';
+  const highMot=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high').length;
+  const lowCap=days.filter(([,d])=>normalizedTrackerDay(d).capacity==='low').length;
+  document.getElementById('statsRow').innerHTML=[[days.length,'days tracked'],[avg,'average emotional score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
+  const changeCounts={}; days.forEach(([,day])=>normalizedTrackerDay(day).changes.forEach(k=>changeCounts[k]=(changeCounts[k]||0)+1));
+  const changes=Object.entries(changeCounts).sort((a,b)=>b[1]-a[1]).slice(0,7), max=changes[0]?.[1]||1;
+  document.getElementById('emotionBars').innerHTML=changes.length?changes.map(([k,c])=>`<div class="bar-row"><span>${escapeHtml(TRACKER_CHANGE_LABELS[k]||k)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(10,c/max*100)}%"></div></div><strong>${c}</strong></div>`).join(''):'<p class="gentle-note">No repeated changes logged yet.</p>';
+  const pairCounts={}; days.forEach(([,day])=>{const sig=daySignals(day); for(let i=0;i<sig.length;i++)for(let j=i+1;j<sig.length;j++){const pair=[sig[i],sig[j]].sort((a,b)=>a[0].localeCompare(b[0]));const key=pair[0][0]+'||'+pair[1][0]; if(!pairCounts[key])pairCounts[key]={count:0,labels:[pair[0][1],pair[1][1]]};pairCounts[key].count++;}});
+  const pairs=Object.values(pairCounts).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,8);
+  document.getElementById('needChips').innerHTML=pairs.length?pairs.map(p=>`<span class="insight-chip">${escapeHtml(p.labels.join(' + '))} · ${p.count}</span>`).join(''):'<p class="gentle-note">Pairs will appear after the same signals occur together more than once.</p>';
+  const rhythm=rhythmAnalysis(days); const patterns=[];
+  patterns.push(`<strong>${escapeHtml(rhythm.level==='possible'?'Possible recurring rhythm':rhythm.level==='early'?'Early rhythm hint':'Still collecting')}</strong><br>${escapeHtml(rhythm.text)}`);
+  const highMotDays=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high' && calculateTrackerMood(d).score!=null);
+  if(highMotDays.length>=3){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>High motivation is not being treated as mood.</strong><br>On your ${highMotDays.length} high-motivation days, the average emotional score is ${a}/10. The app keeps these as separate dimensions so one cannot falsely “cause” the other.`);}
+  const physicalDays=days.filter(([,d])=>Object.values(normalizedTrackerDay(d).symptoms).some(Boolean)).length;
+  if(physicalDays)patterns.push(`<strong>Physical-symptom days:</strong> ${physicalDays} of ${days.length}. Over time, the useful question is whether these cluster near the same emotional/capacity changes—not whether one symptom proves a cycle phase.`);
+  document.getElementById('patternCards').innerHTML=patterns.map(t=>`<div class="pattern-card">${t}</div>`).join('');
+  const entries=app.data.entries||[]; const discoveries=entries.filter(e=>e.type==='discovery');
+  document.getElementById('discoverySummary').innerHTML=entries.length?`<div class="discovery-mini"><strong>${entries.length} guided reflection${entries.length===1?'':'s'}</strong><span>${discoveries.length ? `${discoveries.length} are explicit self-discoveries. ` : ''}These stay separate from the daily tracker but can add context when you review a pattern with your counselor.</span></div>`:'<p class="gentle-note">No guided reflections saved yet. Use them only when they are useful; daily tracking is now the main part of Inner Compass.</p>';
+}
 
-  const categoryCounts = sortedCounts(countValues(discoveryEntries.map(entry => discoveryCategories[entry.category]?.label || entry.title))).slice(0, 4);
-  document.getElementById('discoverySummary').innerHTML = discoveryEntries.length
-    ? categoryCounts.map(([category,count]) => {
-        const example = discoveryEntries.find(entry => (discoveryCategories[entry.category]?.label || entry.title) === category);
-        return `<div class="discovery-mini"><strong>${escapeHtml(category)} · ${count}</strong><span>${escapeHtml(example?.meaning || example?.summary || '')}</span></div>`;
-      }).join('')
-    : '<p class="gentle-note">Add discoveries to build a grounded picture of what fits you.</p>';
+function parseCsv(text){
+  const rows=[]; let row=[], field='', quoted=false;
+  for(let i=0;i<text.length;i++){const ch=text[i]; if(quoted){if(ch==='"'&&text[i+1]==='"'){field+='"';i++;}else if(ch==='"'){quoted=false;}else field+=ch;}else{if(ch==='"')quoted=true;else if(ch===','){row.push(field);field='';}else if(ch==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}else field+=ch;}}
+  if(field.length||row.length){row.push(field.replace(/\r$/,''));rows.push(row);} if(!rows.length)return[];
+  const headers=rows.shift().map(x=>x.trim()); return rows.filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]??'').trim()])));
+}
+function splitBearableDetails(text){return String(text||'').split('|').map(x=>x.trim()).filter(Boolean);}
+function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('affection')||s.includes('attention')||s.includes('emotionally sensitive'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
+function mapBearableFunction(label){const s=label.toLowerCase(); if(s.includes('did homework'))return'homework'; if(s.includes('did chores'))return'chores'; if(s.includes('exerc'))return'exercise'; if(s.includes('homework')&&s.includes('hard'))return'homeworkHard'; if(s.includes('chore')&&s.includes('hard'))return'choresHard'; return null;}
+function mapBearableContext(label){const s=label.toLowerCase(); if(s.includes('poor sleep'))return'poorSleep'; if(s.includes('stress'))return'highStress'; if(s.includes('busy'))return'busy'; if(s.includes('sick')||s.includes('unwell'))return'sick'; return null;}
+function mapBearableSymptom(label){const s=label.toLowerCase(); if(s.includes('cramp'))return'cramping'; if(s.includes('bloat'))return'bloating'; if(s.includes('headache'))return'headache'; if(s.includes('tender breast')||s.includes('breast tender'))return'breastTenderness'; if(s.includes('indigestion')||s.includes('gi '))return'indigestion'; if(s.includes('body ache'))return'bodyAches'; return null;}
+function importBearableCsv(file){
+  if(!file)return; const reader=new FileReader(); reader.onload=e=>{try{const rows=parseCsv(e.target.result); if(!rows.length||!('category' in rows[0])||!('date formatted' in rows[0]))throw new Error('Unexpected CSV');
+    const grouped={}; rows.forEach(r=>{if(!r['date formatted']||r.category==='Health measurements')return;(grouped[r['date formatted']] ||= []).push(r);});
+    let imported=0; const keys=[];
+    Object.entries(grouped).forEach(([date,rs])=>{if(!rs.length)return; const existing=getTrackerDay(date,false); const day=normalizedTrackerDay(existing); const notes=[]; const moods=[]; const changes=new Set(day.changes), functioning=new Set(day.functioning), context=new Set(day.context); const symptoms={...day.symptoms}; let motivation=existing?.motivation||null;
+      rs.forEach(r=>{const cat=(r.category||'').toLowerCase(), detail=r.detail||'', amount=r['rating/amount']||'';
+        if(cat==='mood'){const n=Number(amount);if(Number.isFinite(n))moods.push(n);if(r.notes)notes.push(r.notes);}
+        else if(cat==='symptom'){const key=mapBearableSymptom(detail);if(key){const severe=/severe/i.test(detail)||Number(amount)>=3; symptoms[key]=Math.max(Number(symptoms[key]||0),severe?2:1);}}
+        else if(cat==='capacity'){splitBearableDetails(detail).forEach(x=>{const l=x.toLowerCase();if(l.includes('high motivation'))motivation='high';else if(l.includes('low motivation'))motivation='low';else {const c=mapBearableChange(x);if(c)changes.add(c);}});}
+        else if(cat==='changes'){splitBearableDetails(detail).forEach(x=>{const c=mapBearableChange(x);if(c)changes.add(c);});}
+        else if(cat==='functioning'){splitBearableDetails(detail).forEach(x=>{const c=mapBearableFunction(x);if(c)functioning.add(c);});}
+        else if(cat==='context'){splitBearableDetails(detail).forEach(x=>{const c=mapBearableContext(x);if(c)context.add(c);});}
+        else if(cat==='extra notes'&&r.notes)notes.push(r.notes);
+        else if(cat==='sleep'){const match=amount.match(/^(\d+):(\d{2})$/);if(match)day.sleepHours=Number(match[1])+Number(match[2])/60;}
+      });
+      if(!rs.some(r=>r.category!=='Health measurements'))return;
+      if(moods.length)day.legacyMoodValues=moods; day.importedBearable=true; day.changes=[...changes];day.functioning=[...functioning];day.context=[...context];day.symptoms=symptoms;if(motivation)day.motivation=motivation;
+      const cleanNotes=[...new Set(notes.map(x=>x.trim()).filter(Boolean))]; if(cleanNotes.length){const existingNote=day.notes||''; const add=cleanNotes.filter(n=>!existingNote.includes(n)); day.notes=[existingNote,...add].filter(Boolean).join(existingNote&&add.length?'\n':'');}
+      day.importedAt=new Date().toISOString(); app.data.trackerDays[date]=day; imported++; keys.push(date);
+    });
+    saveData(); if(keys.length){const latest=keys.sort().at(-1); const dt=dateFromKey(latest); app.calendarCursor=new Date(dt.getFullYear(),dt.getMonth(),1);}
+    renderAll(); const status=document.getElementById('bearableImportStatus'); if(status)status.textContent=`Imported or merged ${imported} Bearable day${imported===1?'':'s'}. Health-metric-only dates were skipped.`; showToast(`Bearable history imported: ${imported} days.`);
+  }catch(err){console.error(err);showToast('That does not look like a Bearable CSV export.');}}; reader.readAsText(file);
 }
 
 function renderAll() {
+  renderTrackerHome();
+  renderCalendar();
   renderRecentEntries();
   renderHistory();
   renderInsights();
 }
 
 function exportData() {
-  const payload = { app: 'Inner Compass', exportedAt: new Date().toISOString(), version: APP_VERSION, entries: app.data.entries };
+  const payload = { app: 'Inner Compass', exportedAt: new Date().toISOString(), version: APP_VERSION, entries: app.data.entries, trackerDays: app.data.trackerDays || {} };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1359,7 +1602,7 @@ function importData(file) {
       if (!Array.isArray(parsed.entries)) throw new Error('No entries array');
       const replace = window.confirm(`Import ${parsed.entries.length} entries? Choose OK to replace current data, or Cancel to keep current data unchanged.`);
       if (!replace) return;
-      app.data = { version: APP_VERSION, entries: parsed.entries };
+      app.data = { version: APP_VERSION, entries: parsed.entries, trackerDays: parsed.trackerDays && typeof parsed.trackerDays === 'object' ? parsed.trackerDays : {} };
       saveData();
       renderAll();
       showToast('Backup imported.');
@@ -1372,8 +1615,8 @@ function importData(file) {
 }
 
 function resetData() {
-  if (!window.confirm('Delete every Inner Compass entry from this browser? This cannot be undone.')) return;
-  app.data = { version: APP_VERSION, entries: [] };
+  if (!window.confirm('Delete every Inner Compass tracker day and reflection from this browser? This cannot be undone.')) return;
+  app.data = { version: APP_VERSION, entries: [], trackerDays: {} };
   saveData();
   renderAll();
   showToast('All app data was deleted.');
@@ -1404,7 +1647,7 @@ function installEventHandlers() {
   document.querySelectorAll('[data-go-screen]').forEach(button => button.addEventListener('click', () => goToScreen(button.dataset.goScreen)));
   document.querySelectorAll('[data-start-tool]').forEach(button => button.addEventListener('click', () => startTool(button.dataset.startTool)));
   document.querySelectorAll('[data-reality-mode]').forEach(button => button.addEventListener('click', () => renderRealityMode(button.dataset.realityMode)));
-  document.getElementById('quickCheckin').addEventListener('click', () => startTool('emotion'));
+  document.getElementById('quickCheckin').addEventListener('click', () => { app.trackerDate = localDateKey(new Date()); goToScreen('home'); renderTrackerHome(); });
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalBack').addEventListener('click', goBackInModal);
   document.getElementById('toolModal').addEventListener('click', event => { if (event.target.id === 'toolModal') closeModal(); });
@@ -1416,6 +1659,9 @@ function installEventHandlers() {
   }));
   document.getElementById('exportData').addEventListener('click', exportData);
   document.getElementById('importData').addEventListener('change', event => importData(event.target.files[0]));
+  const bearableInput = document.getElementById('importBearable');
+  if (bearableInput) bearableInput.addEventListener('change', event => importBearableCsv(event.target.files[0]));
+  installTrackerHandlers();
   document.getElementById('resetData').addEventListener('click', resetData);
 }
 
