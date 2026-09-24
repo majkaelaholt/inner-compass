@@ -314,6 +314,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .bar-row { grid-template-columns: 86px 1fr 26px; }
 }
 
+@media (max-width: 420px) {
+  .tracker-hero { padding-inline: 16px; }
+  .tracker-date-control input { padding-inline: 10px; }
+  .calendar-legend { gap: 6px 12px; font-size: 10px; }
+  .calendar-panel { padding: 8px; }
+  .calendar-weekdays, .calendar-grid { gap: 3px; }
+  .calendar-day, .calendar-blank { min-height: 68px; }
+  .calendar-day { padding: 5px; border-radius: 10px; }
+  .calendar-date-num { font-size: 9px; }
+  .calendar-day strong { font-size: 15px; }
+  .calendar-day small { font-size: 7px; min-height: 10px; letter-spacing: -.01em; }
+}
+
 
 /* Entry editing and emotional support */
 .entry-actions { display: flex; align-items: center; gap: 2px; }
@@ -347,7 +360,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .tracker-hero p:last-child { max-width: 700px; margin-bottom: 0; color: var(--muted); line-height: 1.55; }
 .tracker-date-control { min-width: 205px; display: grid; gap: 6px; justify-items: stretch; }
 .tracker-date-control label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
-.tracker-date-control input { width: 100%; border: 1px solid var(--line); background: white; color: var(--text); border-radius: 12px; padding: 11px 12px; font-size: 16px; }
+.tracker-date-control input { width: 100%; max-width: 100%; min-width: 0; min-inline-size: 0; display: block; -webkit-appearance: none; appearance: none; border: 1px solid var(--line); background: white; color: var(--text); border-radius: 12px; padding: 11px 12px; font-size: 16px; }
 .save-status { min-height: 18px; color: var(--sage); font-size: 11px; font-weight: 700; text-align: right; }
 .tracker-layout { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(250px,.65fr); gap: 16px; align-items: start; }
 .tracker-main, .tracker-side { display: grid; gap: 16px; }
@@ -437,15 +450,20 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 760px) {
   .tracker-hero { flex-direction: column; align-items: stretch; padding: 22px 20px; }
   .tracker-date-control { min-width: 0; }
+  .tracker-date-control input { font-size: 15px; }
   .save-status { text-align: left; }
   .tracker-side { grid-template-columns: 1fr; }
   .anchor-choice-grid, .binary-grid, .dual-state-grid, .tracker-toggle-grid, .compact-grid, .symptom-grid { grid-template-columns: 1fr; }
   .state-choice { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .score-nudge { align-items: flex-start; }
   .calendar-toolbar { align-items: flex-start; flex-direction: column; }
-  .calendar-panel { padding: 10px; overflow-x: auto; }
-  .calendar-weekdays, .calendar-grid { min-width: 620px; }
-  .calendar-day, .calendar-blank { min-height: 82px; }
+  .calendar-panel { padding: 10px; overflow-x: hidden; }
+  .calendar-weekdays, .calendar-grid { min-width: 0; gap: 4px; }
+  .calendar-day, .calendar-blank { min-height: 76px; }
+  .calendar-day { padding: 6px; border-radius: 12px; }
+  .calendar-date-num { font-size: 10px; }
+  .calendar-day strong { font-size: 18px; }
+  .calendar-day small { min-height: 12px; font-size: 8px; word-spacing: 0; line-height: 1.15; }
   .calendar-summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .tools-intro-row { flex-direction: column; align-items: flex-start; }
   .panel-hint { text-align: left; max-width: none; }
