@@ -97,9 +97,11 @@
 
             <article class="panel">
               <div class="panel-heading"><div><p class="eyebrow">Capacity</p><h3>How usable did you feel?</h3></div></div>
+              <p class="tracker-help definition-intro">Only change these when they noticeably stand out. On a day you log, leaving them at Typical means there was no noticeable change from your normal.</p>
               <div class="dual-state-grid">
                 <fieldset class="state-fieldset">
                   <legend>Motivation</legend>
+                  <p class="state-definition">How much drive you had to start or do things.</p>
                   <div class="state-choice" data-choice-group="motivation">
                     <button type="button" data-choice-value="low">↓ Low</button>
                     <button type="button" data-choice-value="typical">Typical</button>
@@ -108,6 +110,7 @@
                 </fieldset>
                 <fieldset class="state-fieldset">
                   <legend>Overall capacity</legend>
+                  <p class="state-definition">How much mental and emotional bandwidth you had to handle demands.</p>
                   <div class="state-choice" data-choice-group="capacity">
                     <button type="button" data-choice-value="low">↓ Lower</button>
                     <button type="button" data-choice-value="typical">Typical</button>
@@ -160,6 +163,7 @@
               </div>
               <div class="tracker-subsection">
                 <span class="field-label">Context that could affect the day</span>
+                <p class="context-definition"><strong>High outside stress</strong> = circumstances were unusually stressful. If life was normal but your brain was worrying more, use <strong>More anxious / worried</strong> instead.</p>
                 <div class="tracker-toggle-grid compact-grid">
                   <button type="button" data-track-toggle="context" data-value="poorSleep">Poor sleep</button>
                   <button type="button" data-track-toggle="context" data-value="highStress">High outside stress</button>
@@ -257,7 +261,6 @@
           <span><b>M↑/↓</b> motivation</span>
           <span><b>C↑/↓</b> capacity</span>
           <span><b>●</b> physical symptom</span>
-          <span><b>B</b> imported Bearable day</span>
         </div>
         <article class="panel calendar-panel">
           <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
@@ -277,8 +280,8 @@
           <div class="stats-row" id="statsRow"></div>
           <div class="insight-grid">
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Most common</p><h3>Changes from your baseline</h3></div></div><div id="emotionBars" class="bar-list"></div></article>
-            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Often together</p><h3>Co-occurring signals</h3></div></div><div id="needChips" class="chip-cloud"></div></article>
-            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Possible rhythm</p><h3>What the timeline suggests</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Observed together</p><h3>Signal comparisons</h3></div></div><div id="needChips" class="association-list"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Rhythm watch</p><h3>Down, up, physical, and transition patterns</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
             <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Reflection record</p><h3>What the guided tools are adding</h3></div><button class="text-button" data-go-screen="history">View reflection history</button></div><div id="discoverySummary" class="discovery-summary"></div></article>
           </div>
         </div>
@@ -314,7 +317,7 @@
           <article class="panel settings-card import-card">
             <p class="eyebrow">Bring your history</p>
             <h3>Import Bearable CSV</h3>
-            <p>Import your existing Bearable export so your mood, symptoms, factors, sleep, and notes can appear on the calendar. Health-metric-only days are ignored.</p>
+            <p>Import your existing Bearable export so symptoms, factors, sleep, notes, and functioning can appear on the calendar. Health-metric-only days are ignored. Old Bearable mood numbers are preserved but excluded; Inner Compass rebuilds those days from the other emotional signals you logged.</p>
             <label class="secondary-button file-label">Choose Bearable CSV<input id="importBearable" type="file" accept=".csv,text/csv" /></label>
             <p class="gentle-note" id="bearableImportStatus">The importer adds or merges days; it does not erase your Inner Compass reflections.</p>
           </article>

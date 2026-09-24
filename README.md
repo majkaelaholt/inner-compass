@@ -61,7 +61,7 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Free-Time Compass remains separate inside the same app: Reality Check helps decide whether downtime is reasonable; Free-Time Compass helps choose what kind of downtime fits once you want it.
 
 
-## Version 5 additions
+## Version 6 additions
 
 - Daily pattern tracking is now the main Inner Compass experience.
 - One editable day record can be updated throughout the day; changes auto-save locally.

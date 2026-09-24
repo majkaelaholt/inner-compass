@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 5;
+const APP_VERSION = 6;
 
 const emotionSupport = {
   Frustration: {
@@ -462,10 +462,19 @@ function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { version: APP_VERSION, entries: [], trackerDays: {} };
     const parsed = JSON.parse(raw);
+    const trackerDays = parsed.trackerDays && typeof parsed.trackerDays === 'object' ? parsed.trackerDays : {};
+    // v5 imported Bearable's ambiguous “emotionally sensitive” factor as affection.
+    // Only migrate untouched imported days; anything the user edited stays exactly as they set it.
+    if (Number(parsed.version || 0) < 6) {
+      Object.values(trackerDays).forEach(day => {
+        if (!day || !day.importedBearable || day.customTouched || !Array.isArray(day.changes)) return;
+        if (day.changes.includes('affection')) day.changes = [...new Set(day.changes.map(x => x === 'affection' ? 'legacySensitive' : x))];
+      });
+    }
     return {
       version: APP_VERSION,
       entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-      trackerDays: parsed.trackerDays && typeof parsed.trackerDays === 'object' ? parsed.trackerDays : {}
+      trackerDays
     };
   } catch (error) {
     console.error('Unable to load saved data:', error);
@@ -1282,7 +1291,8 @@ function renderInsights() { renderTrackerInsights(); }
 const TRACKER_CHANGE_LABELS = {
   anxious: 'More anxious / worried', irritable: 'More irritable', overwhelmed: 'Easily overwhelmed', brainFog: 'Brain fog',
   reactive: 'More emotionally reactive', confident: 'More confident', patient: 'More patient', social: 'More social',
-  affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects'
+  affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
+  legacySensitive: 'Emotionally sensitive (Bearable)'
 };
 const TRACKER_FUNCTION_LABELS = { homework: 'Did homework', chores: 'Did chores', exercise: 'Exercised', homeworkHard: 'Homework hard to initiate', choresHard: 'Chores hard to initiate' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
@@ -1334,13 +1344,26 @@ function saveTrackerDay(day) {
   renderCalendar();
   renderTrackerInsights();
 }
+function calculateImportedMood(day) {
+  const d = normalizedTrackerDay(day);
+  // Bearable's old 1–10 mood number is deliberately ignored. We rebuild a conservative
+  // emotional estimate from the change-from-baseline factors the user actually logged.
+  // Motivation, functioning, context, sleep and physical symptoms stay separate dimensions.
+  const weights = { anxious:-1, irritable:-1, overwhelmed:-1, reactive:-0.75, confident:1, patient:0.5, social:0.5, affection:0.5, interested:0.75 };
+  const logged = d.changes.filter(key => Object.prototype.hasOwnProperty.call(weights, key));
+  let delta = logged.reduce((sum,key) => sum + weights[key], 0);
+  delta = Math.max(-2, Math.min(2, delta));
+  const score = Math.max(1, Math.min(10, Math.round(5 + delta)));
+  const parts = ['Rebuilt from Bearable factors; the old Bearable mood number is ignored'];
+  if (logged.length) parts.push(`emotional changes logged: ${logged.map(k => TRACKER_CHANGE_LABELS[k] || k).join(', ')}`);
+  else parts.push('no stronger emotional change was logged, so the day is treated as typical');
+  if (d.changes.includes('legacySensitive')) parts.push('Bearable “emotionally sensitive” is preserved as ambiguous and does not raise or lower the score');
+  return { score, parts, legacy: false, importedEstimate: true };
+}
 function calculateTrackerMood(day) {
   const d = normalizedTrackerDay(day);
-  if (!d.moodCustomTouched && d.importedBearable && Array.isArray(d.legacyMoodValues) && d.legacyMoodValues.length) {
-    const avg = d.legacyMoodValues.reduce((a,b) => a + Number(b || 0), 0) / d.legacyMoodValues.length;
-    return { score: Math.max(1, Math.min(10, Math.round(avg * 10) / 10)), parts: [`Imported Bearable mood average (${d.legacyMoodValues.join(', ')})`], legacy: true };
-  }
-  if (!d.moodAnchor) return { score: null, parts: ['Choose the closest emotional baseline when you are ready to summarize the day.'], legacy: false };
+  if (!d.moodCustomTouched && d.importedBearable) return calculateImportedMood(d);
+  if (!d.moodAnchor) return { score: null, parts: ['Choose the closest emotional baseline when you are ready to summarize the day.'], legacy: false, importedEstimate: false };
   let score = d.moodAnchor === 'harder' ? 4 : d.moodAnchor === 'better' ? 7 : 5;
   const parts = [d.moodAnchor === 'harder' ? 'Harder-than-usual baseline' : d.moodAnchor === 'better' ? 'Better-than-usual baseline' : 'Typical / mixed baseline'];
   if (d.dayFlags.negativeDominated) { score -= 1; parts.push('negative feelings took up a lot of the day'); }
@@ -1356,7 +1379,7 @@ function calculateTrackerMood(day) {
   if (pos > 0) parts.push('positive emotional signals were logged');
   const adj = Math.max(-1, Math.min(1, Number(d.scoreAdjustment) || 0));
   if (adj) { score += adj; parts.push(`you nudged the estimate ${adj > 0 ? 'up' : 'down'} one point`); }
-  return { score: Math.max(1, Math.min(10, Math.round(score))), parts, legacy: false };
+  return { score: Math.max(1, Math.min(10, Math.round(score))), parts, legacy: false, importedEstimate: false };
 }
 function moodLabel(score) {
   if (score == null) return 'Not scored yet';
@@ -1381,7 +1404,7 @@ function renderTrackerHome(preserveNotesFocus = true) {
   const mood = calculateTrackerMood(actual || day);
   document.getElementById('trackerMoodScore').textContent = mood.score == null ? '—' : mood.score;
   document.getElementById('trackerDayLabel').textContent = moodLabel(mood.score);
-  document.querySelectorAll('[data-mood-anchor]').forEach(btn => setButtonSelected(btn, !mood.legacy && btn.dataset.moodAnchor === day.moodAnchor));
+  document.querySelectorAll('[data-mood-anchor]').forEach(btn => setButtonSelected(btn, !mood.importedEstimate && btn.dataset.moodAnchor === day.moodAnchor));
   document.querySelectorAll('[data-day-flag]').forEach(btn => setButtonSelected(btn, Boolean(day.dayFlags[btn.dataset.dayFlag])));
   document.querySelectorAll('[data-score-adjust]').forEach(btn => setButtonSelected(btn, Number(btn.dataset.scoreAdjust) === Number(day.scoreAdjustment || 0)));
   document.querySelectorAll('[data-choice-group]').forEach(group => {
@@ -1403,7 +1426,7 @@ function renderTrackerHome(preserveNotesFocus = true) {
   const notes = document.getElementById('trackerNotes');
   if (notes && (!preserveNotesFocus || document.activeElement !== notes)) notes.value = day.notes || '';
   const expl = document.getElementById('trackerScoreExplanation');
-  if (expl) expl.innerHTML = `<strong>${mood.legacy ? 'Imported score' : mood.score == null ? 'Score not set yet' : 'Why this estimate'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.legacy ? '<small>Set an emotional baseline on this day if you want to replace the old Bearable average with the new scoring method.</small>' : ''}`;
+  if (expl) expl.innerHTML = `<strong>${mood.importedEstimate ? 'Rebuilt from Bearable logs' : mood.score == null ? 'Score not set yet' : 'Why this estimate'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.importedEstimate ? '<small>The original Bearable mood ratings are preserved in the import data but excluded from this score. Set an emotional baseline on this day if you want to replace the rebuilt estimate with a direct Inner Compass score.</small>' : ''}`;
   const summary = [];
   if (day.motivation !== 'typical') summary.push(`<span class="state-chip">Motivation ${day.motivation === 'high' ? '↑ high' : '↓ low'}</span>`);
   if (day.capacity !== 'typical') summary.push(`<span class="state-chip">Capacity ${day.capacity === 'high' ? '↑ high' : '↓ low'}</span>`);
@@ -1459,7 +1482,6 @@ function renderCalendar() {
     if(n.motivation==='high')markers.push('M↑'); else if(n.motivation==='low')markers.push('M↓');
     if(n.capacity==='high')markers.push('C↑'); else if(n.capacity==='low')markers.push('C↓');
     if(symptom)markers.push('●');
-    if(n.importedBearable)markers.push('B');
     const todayClass=key===localDateKey(new Date())?' today':'';
     cells.push(`<button type="button" class="calendar-day${cls}${todayClass}" data-calendar-date="${key}" aria-label="${key}${mood&&mood.score!=null?`, emotional score ${mood.score}`:''}"><span class="calendar-date-num">${d}</span>${mood&&mood.score!=null?`<strong>${mood.score}</strong>`:'<span class="no-score">—</span>'}<small>${markers.join(' ')}</small></button>`);
   }
@@ -1490,23 +1512,77 @@ function findClusters(dateKeys, qualifies) {
   return clusters;
 }
 function median(values){if(!values.length)return null; const a=[...values].sort((x,y)=>x-y); const mid=Math.floor(a.length/2); return a.length%2?a[mid]:(a[mid-1]+a[mid])/2;}
+function formatShortDate(date){return new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(date);}
+function analyzeClusterRhythm(clusters,label){
+  const starts=clusters.map(c=>c[0]);
+  const intervals=starts.slice(1).map((d,i)=>Math.round((d-starts[i])/86400000));
+  if(starts.length<2) return {level:'none', label, text:`${label}: not enough separate clusters yet.`};
+  const plausible=intervals.every(x=>x>=18&&x<=40);
+  const spread=intervals.length ? Math.max(...intervals)-Math.min(...intervals) : Infinity;
+  if(starts.length>=4 && plausible && spread<=7){
+    const med=Math.round(median(intervals));
+    const next=new Date(starts.at(-1)); next.setDate(next.getDate()+med);
+    const window=Math.min(4,Math.max(2,Math.ceil(spread/2)+1));
+    const from=new Date(next); from.setDate(from.getDate()-window);
+    const to=new Date(next); to.setDate(to.getDate()+window);
+    return {level:'possible', label, text:`${label} clusters have started about every ${med} days so far (${intervals.join(', ')}-day intervals). If that repeats, another similar window may begin around ${formatShortDate(from)}–${formatShortDate(to)}. This is a planning heads-up, not a cycle-phase diagnosis.`};
+  }
+  if(starts.length>=3 && plausible && spread<=10){
+    return {level:'early', label, text:`${label}: ${starts.length} separate clusters have intervals of ${intervals.join(', ')} days. That is an early rhythm hint, but Inner Compass will not forecast from it yet.`};
+  }
+  return {level:'none', label, text:`${label}: ${starts.length} cluster${starts.length===1?'':'s'} logged, but the spacing is not consistent enough to forecast.`};
+}
 function rhythmAnalysis(days) {
   const keys=days.map(([k])=>k);
   const downClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.motivation==='low')n++; if(d.capacity==='low')n++; ['anxious','irritable','overwhelmed','reactive'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
-  const starts=downClusters.map(c=>c[0]);
-  const intervals=starts.slice(1).map((d,i)=>Math.round((d-starts[i])/86400000));
-  const plausible=intervals.filter(x=>x>=18&&x<=40);
-  if(starts.length>=3 && plausible.length===intervals.length && Math.max(...intervals)-Math.min(...intervals)<=10){
-    const med=Math.round(median(intervals)); const next=new Date(starts[starts.length-1]); next.setDate(next.getDate()+med);
-    return {level:'possible', text:`Your stronger low-state clusters have started about every ${med} days so far. The next similar window would land around ${new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(next)} if the pattern continues. Treat this as a heads-up, not a cycle diagnosis.`};
-  }
-  if(starts.length===2 && intervals[0]>=18&&intervals[0]<=40) return {level:'early', text:`Two stronger low-state clusters began ${intervals[0]} days apart. That is an early hint worth watching, but two clusters are not enough to call it a repeating rhythm.`};
-  return {level:'none', text:`No reliable recurring interval yet. That is expected early on; the app needs multiple separate low-state clusters before forecasting anything.`};
+  const upClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.motivation==='high')n++; if(d.capacity==='high')n++; ['confident','patient','social','affection','interested'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
+  const physicalClusters=findClusters(keys,day=>Object.values(normalizedTrackerDay(day).symptoms).some(Boolean));
+  const down=analyzeClusterRhythm(downClusters,'Down-state');
+  const up=analyzeClusterRhythm(upClusters,'Up-state');
+  const physical=analyzeClusterRhythm(physicalClusters,'Physical-symptom');
+  const transitionGaps=[];
+  downClusters.forEach(cluster=>{
+    const end=cluster.at(-1);
+    const next=upClusters.map(c=>c[0]).find(start=>start>end && Math.round((start-end)/86400000)<=10);
+    if(next)transitionGaps.push(Math.round((next-end)/86400000));
+  });
+  let transition;
+  if(transitionGaps.length>=2){
+    const lo=Math.min(...transitionGaps), hi=Math.max(...transitionGaps);
+    transition={level:'observed',label:'Down → up transition',text:`In ${transitionGaps.length} observed transitions, an up-state cluster began ${lo===hi?`${lo} day${lo===1?'':'s'}`:`${lo}–${hi} days`} after a down-state cluster ended. Keep watching whether that sequence repeats.`};
+  }else if(transitionGaps.length===1){
+    transition={level:'early',label:'Down → up transition',text:`One down-to-up transition has been observed so far (${transitionGaps[0]} day${transitionGaps[0]===1?'':'s'} apart). One example is not enough to call it a pattern.`};
+  }else transition={level:'none',label:'Down → up transition',text:'No repeated down-to-up transition has been established yet.'};
+  return {down,up,physical,transition,summaries:[down,up,physical,transition]};
 }
 function patternPreviewText(){
   const days=Object.entries(app.data.trackerDays||{}).filter(([,d])=>trackerHasMeaningfulData(d)).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(days.length<7)return `${days.length} day${days.length===1?'':'s'} logged so far. Keep collecting without trying to force a cycle phase.`;
-  return rhythmAnalysis(days).text;
+  if(days.length<10)return `${days.length} day${days.length===1?'':'s'} logged so far. Keep collecting without trying to force a cycle phase.`;
+  const rhythm=rhythmAnalysis(days);
+  const forecast=rhythm.summaries.find(x=>x.level==='possible');
+  if(forecast)return forecast.text;
+  const early=rhythm.summaries.find(x=>x.level==='early'||x.level==='observed');
+  return early ? early.text : 'No reliable repeating rhythm yet. That is useful information too; keep logging what actually stands out.';
+}
+function signalAssociations(days){
+  const records=days.map(([,d])=>new Map(daySignals(d).map(([k,l])=>[k,l])));
+  const labels=new Map(); records.forEach(m=>m.forEach((v,k)=>labels.set(k,v)));
+  const keys=[...labels.keys()]; const n=records.length; const results=[];
+  function metric(a,b){
+    let aCount=0,bCount=0,both=0;
+    records.forEach(m=>{const hasA=m.has(a),hasB=m.has(b); if(hasA)aCount++; if(hasB)bCount++; if(hasA&&hasB)both++;});
+    const without=n-aCount, bWithout=bCount-both;
+    if(aCount<4||without<4||both<2)return null;
+    const withRate=both/aCount, withoutRate=bWithout/without;
+    return {anchor:a,target:b,aCount,both,without,bWithout,withRate,withoutRate,diff:withRate-withoutRate};
+  }
+  for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
+    const ab=metric(keys[i],keys[j]), ba=metric(keys[j],keys[i]);
+    const best=[ab,ba].filter(Boolean).sort((x,y)=>Math.abs(y.diff)-Math.abs(x.diff))[0];
+    if(best&&Math.abs(best.diff)>=0.15)results.push(best);
+  }
+  const seen=new Set();
+  return results.sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)||b.both-a.both).filter(r=>{const key=[r.anchor,r.target].sort().join('||');if(seen.has(key))return false;seen.add(key);return true;}).slice(0,6).map(r=>({...r,anchorLabel:labels.get(r.anchor),targetLabel:labels.get(r.target)}));
 }
 function renderTrackerInsights(){
   const empty=document.getElementById('insightsEmpty'), content=document.getElementById('insightsContent'); if(!empty||!content)return;
@@ -1521,20 +1597,16 @@ function renderTrackerInsights(){
   const changeCounts={}; days.forEach(([,day])=>normalizedTrackerDay(day).changes.forEach(k=>changeCounts[k]=(changeCounts[k]||0)+1));
   const changes=Object.entries(changeCounts).sort((a,b)=>b[1]-a[1]).slice(0,7), max=changes[0]?.[1]||1;
   document.getElementById('emotionBars').innerHTML=changes.length?changes.map(([k,c])=>`<div class="bar-row"><span>${escapeHtml(TRACKER_CHANGE_LABELS[k]||k)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(10,c/max*100)}%"></div></div><strong>${c}</strong></div>`).join(''):'<p class="gentle-note">No repeated changes logged yet.</p>';
-  const pairCounts={}; days.forEach(([,day])=>{const sig=daySignals(day); for(let i=0;i<sig.length;i++)for(let j=i+1;j<sig.length;j++){const pair=[sig[i],sig[j]].sort((a,b)=>a[0].localeCompare(b[0]));const key=pair[0][0]+'||'+pair[1][0]; if(!pairCounts[key])pairCounts[key]={count:0,labels:[pair[0][1],pair[1][1]]};pairCounts[key].count++;}});
-  const pairs=Object.values(pairCounts).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,8);
-  document.getElementById('needChips').innerHTML=pairs.length?pairs.map(p=>`<span class="insight-chip">${escapeHtml(p.labels.join(' + '))} · ${p.count}</span>`).join(''):'<p class="gentle-note">Pairs will appear after the same signals occur together more than once.</p>';
+  const associations=signalAssociations(days);
+  document.getElementById('needChips').innerHTML=associations.length?associations.map(a=>`<div class="association-card"><strong>On days with ${escapeHtml(a.anchorLabel)}…</strong><span>${escapeHtml(a.targetLabel)} also appeared ${a.both} of ${a.aCount} days (${Math.round(a.withRate*100)}%), versus ${a.bWithout} of ${a.without} days (${Math.round(a.withoutRate*100)}%) without it.</span></div>`).join('')+'<p class="gentle-note">These are descriptive associations, not causes. Small samples can change quickly as you log more days.</p>':'<p class="gentle-note">Not enough repeated observations yet for a useful comparison. Inner Compass waits until both the “with” and “without” groups have enough days.</p>';
   const rhythm=rhythmAnalysis(days); const patterns=[];
-  patterns.push(`<strong>${escapeHtml(rhythm.level==='possible'?'Possible recurring rhythm':rhythm.level==='early'?'Early rhythm hint':'Still collecting')}</strong><br>${escapeHtml(rhythm.text)}`);
+  rhythm.summaries.forEach(x=>patterns.push(`<strong>${escapeHtml(x.label)}</strong><br>${escapeHtml(x.text.replace(`${x.label}: `,''))}`));
   const highMotDays=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high' && calculateTrackerMood(d).score!=null);
-  if(highMotDays.length>=3){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>High motivation is not being treated as mood.</strong><br>On your ${highMotDays.length} high-motivation days, the average emotional score is ${a}/10. The app keeps these as separate dimensions so one cannot falsely “cause” the other.`);}
-  const physicalDays=days.filter(([,d])=>Object.values(normalizedTrackerDay(d).symptoms).some(Boolean)).length;
-  if(physicalDays)patterns.push(`<strong>Physical-symptom days:</strong> ${physicalDays} of ${days.length}. Over time, the useful question is whether these cluster near the same emotional/capacity changes—not whether one symptom proves a cycle phase.`);
+  if(highMotDays.length>=4){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>Motivation stays separate from mood.</strong><br>Across ${highMotDays.length} high-motivation days, the average emotional score is ${a}/10. This describes co-occurrence only; high motivation is not scored as emotionally good or bad.`);}
   document.getElementById('patternCards').innerHTML=patterns.map(t=>`<div class="pattern-card">${t}</div>`).join('');
   const entries=app.data.entries||[]; const discoveries=entries.filter(e=>e.type==='discovery');
   document.getElementById('discoverySummary').innerHTML=entries.length?`<div class="discovery-mini"><strong>${entries.length} guided reflection${entries.length===1?'':'s'}</strong><span>${discoveries.length ? `${discoveries.length} are explicit self-discoveries. ` : ''}These stay separate from the daily tracker but can add context when you review a pattern with your counselor.</span></div>`:'<p class="gentle-note">No guided reflections saved yet. Use them only when they are useful; daily tracking is now the main part of Inner Compass.</p>';
 }
-
 function parseCsv(text){
   const rows=[]; let row=[], field='', quoted=false;
   for(let i=0;i<text.length;i++){const ch=text[i]; if(quoted){if(ch==='"'&&text[i+1]==='"'){field+='"';i++;}else if(ch==='"'){quoted=false;}else field+=ch;}else{if(ch==='"')quoted=true;else if(ch===','){row.push(field);field='';}else if(ch==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}else field+=ch;}}
@@ -1542,7 +1614,7 @@ function parseCsv(text){
   const headers=rows.shift().map(x=>x.trim()); return rows.filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]??'').trim()])));
 }
 function splitBearableDetails(text){return String(text||'').split('|').map(x=>x.trim()).filter(Boolean);}
-function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('affection')||s.includes('attention')||s.includes('emotionally sensitive'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
+function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('emotionally sensitive'))return'legacySensitive'; if(s.includes('affection')||s.includes('attention'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
 function mapBearableFunction(label){const s=label.toLowerCase(); if(s.includes('did homework'))return'homework'; if(s.includes('did chores'))return'chores'; if(s.includes('exerc'))return'exercise'; if(s.includes('homework')&&s.includes('hard'))return'homeworkHard'; if(s.includes('chore')&&s.includes('hard'))return'choresHard'; return null;}
 function mapBearableContext(label){const s=label.toLowerCase(); if(s.includes('poor sleep'))return'poorSleep'; if(s.includes('stress'))return'highStress'; if(s.includes('busy'))return'busy'; if(s.includes('sick')||s.includes('unwell'))return'sick'; return null;}
 function mapBearableSymptom(label){const s=label.toLowerCase(); if(s.includes('cramp'))return'cramping'; if(s.includes('bloat'))return'bloating'; if(s.includes('headache'))return'headache'; if(s.includes('tender breast')||s.includes('breast tender'))return'breastTenderness'; if(s.includes('indigestion')||s.includes('gi '))return'indigestion'; if(s.includes('body ache'))return'bodyAches'; return null;}
