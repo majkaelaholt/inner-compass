@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inner-compass-v6';
+const CACHE_NAME = 'inner-compass-v7';
 const APP_FILES = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', event => {

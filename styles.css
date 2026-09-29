@@ -481,3 +481,58 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 760px) {
   .state-definition { min-height: 0; }
 }
+
+
+/* v7: smarter score + denser tracker */
+.tracker-hero-compact { padding: 18px 20px; margin-bottom: 12px; gap: 18px; }
+.tracker-hero-compact h2 { font-size: clamp(28px,3.2vw,38px); margin: 3px 0 4px; }
+.tracker-hero-compact p:last-child { margin-top: 4px; font-size: 13px; line-height: 1.45; }
+.tracker-date-control { min-width: 195px; }
+.typical-day-button { width: 100%; min-height: 38px; padding-inline: 10px; font-size: 11px; }
+.typical-day-button:disabled { opacity: .68; cursor: default; transform: none; }
+.tracker-layout, .tracker-main, .tracker-side { gap: 12px; }
+.tracker-main > .panel, .tracker-side > .panel { padding: 18px; }
+.tracker-main .panel-heading { margin-bottom: 12px; }
+.compact-heading { align-items: center; }
+.smart-score-card .tracker-help { margin-bottom: 12px; }
+.day-score strong { font-size: 44px; }
+
+.core-state-grid { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 4px 0 12px; }
+.core-state-row { display: grid; grid-template-columns: minmax(180px,.85fr) minmax(300px,1.15fr); align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.core-state-row:last-child { border-bottom: 0; }
+.core-state-copy { display: grid; gap: 2px; min-width: 0; }
+.core-state-copy strong { font-size: 12px; }
+.core-state-copy small { color: var(--muted); font-size: 10.5px; line-height: 1.35; }
+.core-state-row .state-choice button { min-height: 40px; }
+.compact-binary-grid { margin-top: 10px; }
+.compact-binary-grid button { min-height: 42px; padding: 9px 10px; }
+.score-explanation { margin-top: 10px; padding: 11px 12px; }
+.score-nudge { margin-top: 10px; }
+
+.tracker-toggle-grid { gap: 7px; }
+.tracker-toggle-grid button { min-height: 42px; padding: 8px 10px; }
+.symptom-grid { gap: 7px; }
+.symptom-grid button { min-height: 44px; padding: 8px 10px; }
+.tracker-subsection { margin-bottom: 12px; }
+.context-definition { margin-bottom: 8px; }
+.tracker-notes-details { border-top: 1px solid var(--line); padding-top: 10px; }
+.tracker-notes-details summary { cursor: pointer; color: var(--text); font-size: 12px; font-weight: 760; }
+.tracker-notes-details summary span { color: var(--muted); font-size: 10px; font-weight: 600; margin-left: 4px; }
+.tracker-notes-details[open] summary { margin-bottom: 9px; }
+.tracker-notes-label textarea { min-height: 76px; }
+
+@media (max-width: 760px) {
+  .tracker-hero-compact { padding: 15px 16px; gap: 12px; }
+  .tracker-hero-compact h2 { font-size: 30px; }
+  .tracker-main > .panel, .tracker-side > .panel { padding: 15px; }
+  .core-state-row { grid-template-columns: 1fr; gap: 6px; padding: 9px 0; }
+  .core-state-copy small { max-width: 440px; }
+  .state-choice { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .tracker-toggle-grid, .compact-grid, .symptom-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .tracker-toggle-grid button, .symptom-grid button { min-height: 46px; }
+  .binary-grid.compact-binary-grid { grid-template-columns: 1fr; }
+  .day-score strong { font-size: 40px; }
+}
+@media (max-width: 350px) {
+  .tracker-toggle-grid, .compact-grid, .symptom-grid { grid-template-columns: 1fr; }
+}

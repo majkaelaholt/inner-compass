@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 
 const emotionSupport = {
   Frustration: {
@@ -469,6 +469,16 @@ function loadData() {
       Object.values(trackerDays).forEach(day => {
         if (!day || !day.importedBearable || day.customTouched || !Array.isArray(day.changes)) return;
         if (day.changes.includes('affection')) day.changes = [...new Set(day.changes.map(x => x === 'affection' ? 'legacySensitive' : x))];
+      });
+    }
+    // v7 broadens the score from “mood only” to an overall day-state estimate.
+    // Old emotional anchors map cleanly into the new emotional-tone dimension.
+    if (Number(parsed.version || 0) < 7) {
+      Object.values(trackerDays).forEach(day => {
+        if (!day || typeof day !== 'object') return;
+        if (!day.tone) day.tone = day.moodAnchor === 'harder' ? 'low' : day.moodAnchor === 'better' ? 'high' : 'typical';
+        if (!day.energy) day.energy = 'typical';
+        if (!day.enjoyment) day.enjoyment = 'typical';
       });
     }
     return {
@@ -1289,13 +1299,14 @@ function renderInsights() { renderTrackerInsights(); }
 
 
 const TRACKER_CHANGE_LABELS = {
+  down: 'More sad / down', flat: 'More flat / emotionally blah', content: 'More happy / content',
   anxious: 'More anxious / worried', irritable: 'More irritable', overwhelmed: 'Easily overwhelmed', brainFog: 'Brain fog',
   reactive: 'More emotionally reactive', confident: 'More confident', patient: 'More patient', social: 'More social',
   affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
   legacySensitive: 'Emotionally sensitive (Bearable)'
 };
 const TRACKER_FUNCTION_LABELS = { homework: 'Did homework', chores: 'Did chores', exercise: 'Exercised', homeworkHard: 'Homework hard to initiate', choresHard: 'Chores hard to initiate' };
-const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
+const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
 const TRACKER_SYMPTOM_LABELS = { cramping: 'Cramping', bloating: 'Bloating', headache: 'Headache', breastTenderness: 'Breast tenderness', indigestion: 'GI / indigestion', bodyAches: 'Body aches' };
 
 function localDateKey(date) {
@@ -1309,7 +1320,7 @@ function dateFromKey(key) {
   return new Date(y || 2000, (m || 1) - 1, d || 1);
 }
 function trackerDayDefaults() {
-  return { moodAnchor: null, moodCustomTouched: false, dayFlags: {}, scoreAdjustment: 0, motivation: 'typical', capacity: 'typical', changes: [], symptoms: {}, functioning: [], context: [], notes: '', customTouched: false, updatedAt: null };
+  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], context: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
 }
 function getTrackerDay(key, create = false) {
   app.data.trackerDays = app.data.trackerDays || {};
@@ -1321,20 +1332,24 @@ function getTrackerDay(key, create = false) {
   return day;
 }
 function normalizedTrackerDay(day) {
-  return Object.assign(trackerDayDefaults(), day || {}, {
+  const normalized = Object.assign(trackerDayDefaults(), day || {}, {
     dayFlags: Object.assign({}, day?.dayFlags || {}),
     changes: Array.isArray(day?.changes) ? day.changes : [],
     symptoms: Object.assign({}, day?.symptoms || {}),
     functioning: Array.isArray(day?.functioning) ? day.functioning : [],
     context: Array.isArray(day?.context) ? day.context : []
   });
+  // Backward compatibility for v6 days that only had the old overall emotional anchor.
+  if (!day?.tone) normalized.tone = day?.moodAnchor === 'harder' ? 'low' : day?.moodAnchor === 'better' ? 'high' : 'typical';
+  return normalized;
 }
 function trackerHasMeaningfulData(day) {
   if (!day) return false;
-  return Boolean(day.customTouched || day.importedBearable || (day.legacyMoodValues && day.legacyMoodValues.length));
+  return Boolean(day.checkedIn || day.customTouched || day.importedBearable || (day.legacyMoodValues && day.legacyMoodValues.length));
 }
 function saveTrackerDay(day) {
   day.customTouched = true;
+  day.checkedIn = true;
   day.updatedAt = new Date().toISOString();
   app.data.trackerDays[app.trackerDate] = day;
   saveData();
@@ -1344,50 +1359,77 @@ function saveTrackerDay(day) {
   renderCalendar();
   renderTrackerInsights();
 }
-function calculateImportedMood(day) {
-  const d = normalizedTrackerDay(day);
-  // Bearable's old 1–10 mood number is deliberately ignored. We rebuild a conservative
-  // emotional estimate from the change-from-baseline factors the user actually logged.
-  // Motivation, functioning, context, sleep and physical symptoms stay separate dimensions.
-  const weights = { anxious:-1, irritable:-1, overwhelmed:-1, reactive:-0.75, confident:1, patient:0.5, social:0.5, affection:0.5, interested:0.75 };
-  const logged = d.changes.filter(key => Object.prototype.hasOwnProperty.call(weights, key));
-  let delta = logged.reduce((sum,key) => sum + weights[key], 0);
-  delta = Math.max(-2, Math.min(2, delta));
-  const score = Math.max(1, Math.min(10, Math.round(5 + delta)));
-  const parts = ['Rebuilt from Bearable factors; the old Bearable mood number is ignored'];
-  if (logged.length) parts.push(`emotional changes logged: ${logged.map(k => TRACKER_CHANGE_LABELS[k] || k).join(', ')}`);
-  else parts.push('no stronger emotional change was logged, so the day is treated as typical');
-  if (d.changes.includes('legacySensitive')) parts.push('Bearable “emotionally sensitive” is preserved as ambiguous and does not raise or lower the score');
-  return { score, parts, legacy: false, importedEstimate: true };
+
+function scoreStateDelta(value, low, high) {
+  return value === 'low' ? low : value === 'high' ? high : 0;
 }
 function calculateTrackerMood(day) {
+  if (!trackerHasMeaningfulData(day)) return { score: null, parts: ['No check-in has been logged for this day yet.'], importedEstimate: false, legacy: false };
   const d = normalizedTrackerDay(day);
-  if (!d.moodCustomTouched && d.importedBearable) return calculateImportedMood(d);
-  if (!d.moodAnchor) return { score: null, parts: ['Choose the closest emotional baseline when you are ready to summarize the day.'], legacy: false, importedEstimate: false };
-  let score = d.moodAnchor === 'harder' ? 4 : d.moodAnchor === 'better' ? 7 : 5;
-  const parts = [d.moodAnchor === 'harder' ? 'Harder-than-usual baseline' : d.moodAnchor === 'better' ? 'Better-than-usual baseline' : 'Typical / mixed baseline'];
-  if (d.dayFlags.negativeDominated) { score -= 1; parts.push('negative feelings took up a lot of the day'); }
-  if (d.dayFlags.positiveStoodOut) { score += 1; parts.push('positive feelings stood out'); }
-  if (d.dayFlags.emotionsInterfered) { score -= 1; parts.push('emotions interfered with normal responsibilities'); }
-  const negativeWeights = { anxious: -.75, irritable: -.75, overwhelmed: -.75, reactive: -.6 };
-  const positiveWeights = { confident: .6, patient: .4, social: .4, affection: .3, interested: .5 };
+  let score = 6;
+  const parts = ['6.0 = your ordinary baseline'];
+
+  const core = [
+    ['Emotional tone', d.tone, -1.25, 1.25],
+    ['Motivation', d.motivation, -0.75, 0.50],
+    ['Energy', d.energy, -0.60, 0.45],
+    ['Capacity', d.capacity, -0.95, 0.65],
+    ['Enjoyment / spark', d.enjoyment, -1.00, 0.80]
+  ];
+  core.forEach(([label,value,low,high]) => {
+    const delta = scoreStateDelta(value, low, high);
+    score += delta;
+    if (delta) parts.push(`${label} ${value === 'low' ? '↓' : '↑'}`);
+  });
+
+  // Direct mood signals carry more weight than anxiety/irritability because those can coexist with an otherwise good day.
+  const negativeWeights = { down:-0.80, flat:-0.80, anxious:-0.35, irritable:-0.35, overwhelmed:-0.55, brainFog:-0.30, reactive:-0.35 };
+  const positiveWeights = { content:0.80, confident:0.35, patient:0.25, social:0.20, interested:0.35 };
   let neg = 0, pos = 0;
-  d.changes.forEach(key => { if (negativeWeights[key]) neg += negativeWeights[key]; if (positiveWeights[key]) pos += positiveWeights[key]; });
-  neg = Math.max(-1.25, neg); pos = Math.min(1, pos);
+  d.changes.forEach(key => {
+    if (Object.prototype.hasOwnProperty.call(negativeWeights,key)) neg += negativeWeights[key];
+    if (Object.prototype.hasOwnProperty.call(positiveWeights,key)) pos += positiveWeights[key];
+  });
+  neg = Math.max(-1.8, neg);
+  pos = Math.min(1.35, pos);
   score += neg + pos;
-  if (neg < 0) parts.push('negative emotional signals were logged');
-  if (pos > 0) parts.push('positive emotional signals were logged');
+  if (neg < 0) parts.push('rougher emotional/cognitive signals');
+  if (pos > 0) parts.push('positive emotional signals');
+  if (d.changes.includes('affection')) parts.push('affection/attention shift tracked as a pattern clue (score-neutral)');
+  if (d.changes.includes('legacySensitive')) parts.push('legacy emotional-sensitivity clue kept score-neutral');
+
+  if (d.dayFlags.negativeDominated) { score -= 0.55; parts.push('rough feelings lingered'); }
+  if (d.dayFlags.positiveStoodOut) { score += 0.55; parts.push('a good/enjoyable stretch stood out'); }
+  if (d.dayFlags.emotionsInterfered) { score -= 0.50; parts.push('emotions interfered with responsibilities'); }
+
+  let functionDrag = 0;
+  if (d.functioning.includes('homeworkHard')) functionDrag -= 0.25;
+  if (d.functioning.includes('choresHard')) functionDrag -= 0.25;
+  score += Math.max(-0.50, functionDrag);
+  if (functionDrag < 0) parts.push('starting responsibilities was unusually hard');
+
+  // Physical discomfort matters to how a day feels, but is intentionally capped so cramps/headaches cannot define the whole day.
+  let symptomDrag = 0;
+  Object.values(d.symptoms).forEach(level => { const n=Number(level)||0; if (n===1) symptomDrag -= 0.08; else if (n>=2) symptomDrag -= 0.18; });
+  symptomDrag = Math.max(-0.60, symptomDrag);
+  score += symptomDrag;
+  if (symptomDrag < 0) parts.push('physical symptoms added a small drag');
+
+  // Context is deliberately not scored: it helps explain patterns without turning a busy/stressful circumstance into “your mood.”
+  if (d.context.length) parts.push('outside context tracked separately (not scored)');
+
   const adj = Math.max(-1, Math.min(1, Number(d.scoreAdjustment) || 0));
-  if (adj) { score += adj; parts.push(`you nudged the estimate ${adj > 0 ? 'up' : 'down'} one point`); }
-  return { score: Math.max(1, Math.min(10, Math.round(score))), parts, legacy: false, importedEstimate: false };
+  if (adj) { score += adj; parts.push(`manual nudge ${adj > 0 ? '+1' : '−1'}`); }
+  score = Math.max(1, Math.min(10, Math.round(score * 10) / 10));
+  return { score, parts, legacy: false, importedEstimate: Boolean(d.importedBearable && !d.customTouched) };
 }
 function moodLabel(score) {
-  if (score == null) return 'Not scored yet';
-  if (score <= 2) return 'Very hard day';
-  if (score <= 4) return 'Harder-than-usual day';
-  if (score <= 6) return 'Typical / mixed day';
-  if (score <= 8) return 'Good day';
-  return 'Exceptionally good day';
+  if (score == null) return 'Not logged yet';
+  if (score < 3) return 'Very rough / depleted day';
+  if (score < 4.5) return 'Low / strained day';
+  if (score < 6.5) return 'Baseline / mixed day';
+  if (score < 8.3) return 'Good / strong day';
+  return 'Exceptionally good / high day';
 }
 function setButtonSelected(button, selected) { if (button) button.classList.toggle('selected', Boolean(selected)); }
 
@@ -1404,7 +1446,6 @@ function renderTrackerHome(preserveNotesFocus = true) {
   const mood = calculateTrackerMood(actual || day);
   document.getElementById('trackerMoodScore').textContent = mood.score == null ? '—' : mood.score;
   document.getElementById('trackerDayLabel').textContent = moodLabel(mood.score);
-  document.querySelectorAll('[data-mood-anchor]').forEach(btn => setButtonSelected(btn, !mood.importedEstimate && btn.dataset.moodAnchor === day.moodAnchor));
   document.querySelectorAll('[data-day-flag]').forEach(btn => setButtonSelected(btn, Boolean(day.dayFlags[btn.dataset.dayFlag])));
   document.querySelectorAll('[data-score-adjust]').forEach(btn => setButtonSelected(btn, Number(btn.dataset.scoreAdjust) === Number(day.scoreAdjustment || 0)));
   document.querySelectorAll('[data-choice-group]').forEach(group => {
@@ -1426,15 +1467,20 @@ function renderTrackerHome(preserveNotesFocus = true) {
   const notes = document.getElementById('trackerNotes');
   if (notes && (!preserveNotesFocus || document.activeElement !== notes)) notes.value = day.notes || '';
   const expl = document.getElementById('trackerScoreExplanation');
-  if (expl) expl.innerHTML = `<strong>${mood.importedEstimate ? 'Rebuilt from Bearable logs' : mood.score == null ? 'Score not set yet' : 'Why this estimate'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.importedEstimate ? '<small>The original Bearable mood ratings are preserved in the import data but excluded from this score. Set an emotional baseline on this day if you want to replace the rebuilt estimate with a direct Inner Compass score.</small>' : ''}`;
+  if (expl) expl.innerHTML = `<strong>${mood.importedEstimate ? 'Rebuilt from Bearable signals' : mood.score == null ? 'No day logged yet' : 'How this score was built'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.importedEstimate ? '<small>The old Bearable mood number is ignored. This estimate uses the other signals that were actually logged, with missing new v7 dimensions treated as Typical.</small>' : '<small>This is an overall day-state estimate, not a depression score. Raw motivation, capacity, emotions, symptoms, and context remain separate for pattern analysis.</small>'}`;
   const summary = [];
+  if (day.tone !== 'typical') summary.push(`<span class="state-chip">Tone ${day.tone === 'high' ? '↑ lighter' : '↓ heavier'}</span>`);
   if (day.motivation !== 'typical') summary.push(`<span class="state-chip">Motivation ${day.motivation === 'high' ? '↑ high' : '↓ low'}</span>`);
+  if (day.energy !== 'typical') summary.push(`<span class="state-chip">Energy ${day.energy === 'high' ? '↑ high' : '↓ low'}</span>`);
   if (day.capacity !== 'typical') summary.push(`<span class="state-chip">Capacity ${day.capacity === 'high' ? '↑ high' : '↓ low'}</span>`);
+  if (day.enjoyment !== 'typical') summary.push(`<span class="state-chip">Enjoyment ${day.enjoyment === 'high' ? '↑ more' : '↓ less'}</span>`);
   day.changes.slice(0,5).forEach(x => summary.push(`<span class="state-chip">${escapeHtml(TRACKER_CHANGE_LABELS[x] || x)}</span>`));
   const symptomCount = Object.values(day.symptoms).filter(Boolean).length;
   if (symptomCount) summary.push(`<span class="state-chip">${symptomCount} physical symptom${symptomCount===1?'':'s'}</span>`);
   if (day.importedBearable) summary.push('<span class="state-chip imported-chip">Bearable history</span>');
   document.getElementById('trackerStateSummary').innerHTML = summary.join('') || '<span class="gentle-note">Nothing unusual logged yet. Typical days are useful data too.</span>';
+  const checkedButton = document.getElementById('markDayLogged');
+  if (checkedButton) { const counted = trackerHasMeaningfulData(actual); checkedButton.textContent = counted ? '✓ Day is counted' : 'Count today as checked in'; checkedButton.disabled = counted; }
   const preview = document.getElementById('trackerPatternPreview');
   if (preview) preview.textContent = patternPreviewText();
 }
@@ -1449,7 +1495,7 @@ function updateTrackerArray(bucket, value) {
 function installTrackerHandlers() {
   const dateInput = document.getElementById('trackerDate');
   if (dateInput) dateInput.addEventListener('change', () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) return; app.trackerDate = dateInput.value; renderTrackerHome(false); });
-  document.querySelectorAll('[data-mood-anchor]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.moodAnchor=btn.dataset.moodAnchor; day.moodCustomTouched=true; saveTrackerDay(day); }));
+  const markDay=document.getElementById('markDayLogged'); if(markDay) markDay.addEventListener('click',()=>{const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.checkedIn=true; saveTrackerDay(day);});
   document.querySelectorAll('[data-day-flag]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const k=btn.dataset.dayFlag; day.dayFlags[k]=!day.dayFlags[k]; day.moodCustomTouched=true; saveTrackerDay(day); }));
   document.querySelectorAll('[data-score-adjust]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.scoreAdjustment=Number(btn.dataset.scoreAdjust); day.moodCustomTouched=true; saveTrackerDay(day); }));
   document.querySelectorAll('[data-choice-group] [data-choice-value]').forEach(btn => btn.addEventListener('click', () => { const group=btn.closest('[data-choice-group]').dataset.choiceGroup; const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day[group]=btn.dataset.choiceValue; saveTrackerDay(day); }));
@@ -1475,7 +1521,7 @@ function renderCalendar() {
   for(let d=1;d<=daysInMonth;d++){
     const key=localDateKey(new Date(y,m,d)); const day=getTrackerDay(key,false); const has=trackerHasMeaningfulData(day); if(has)monthDays.push(day);
     const mood=has?calculateTrackerMood(day):null;
-    const cls=mood&&mood.score!=null?(mood.score<=4?' mood-low':mood.score>=7?' mood-good':' mood-neutral'):'';
+    const cls=mood&&mood.score!=null?(mood.score<4.5?' mood-low':mood.score>=6.5?' mood-good':' mood-neutral'):'';
     const n=normalizedTrackerDay(day);
     const symptom=Object.values(n.symptoms||{}).some(Boolean);
     const markers=[];
@@ -1483,7 +1529,7 @@ function renderCalendar() {
     if(n.capacity==='high')markers.push('C↑'); else if(n.capacity==='low')markers.push('C↓');
     if(symptom)markers.push('●');
     const todayClass=key===localDateKey(new Date())?' today':'';
-    cells.push(`<button type="button" class="calendar-day${cls}${todayClass}" data-calendar-date="${key}" aria-label="${key}${mood&&mood.score!=null?`, emotional score ${mood.score}`:''}"><span class="calendar-date-num">${d}</span>${mood&&mood.score!=null?`<strong>${mood.score}</strong>`:'<span class="no-score">—</span>'}<small>${markers.join(' ')}</small></button>`);
+    cells.push(`<button type="button" class="calendar-day${cls}${todayClass}" data-calendar-date="${key}" aria-label="${key}${mood&&mood.score!=null?`, overall day-state score ${mood.score}`:''}"><span class="calendar-date-num">${d}</span>${mood&&mood.score!=null?`<strong>${mood.score}</strong>`:'<span class="no-score">—</span>'}<small>${markers.join(' ')}</small></button>`);
   }
   grid.innerHTML=cells.join('');
   const summary=document.getElementById('calendarSummary');
@@ -1493,16 +1539,21 @@ function renderCalendar() {
     const highMot=monthDays.filter(x=>normalizedTrackerDay(x).motivation==='high').length;
     const lowCap=monthDays.filter(x=>normalizedTrackerDay(x).capacity==='low').length;
     const symptomDays=monthDays.filter(x=>Object.values(normalizedTrackerDay(x).symptoms).some(Boolean)).length;
-    summary.innerHTML=[[monthDays.length,'days logged'],[avg,'average emotional score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days'],[symptomDays,'days with physical symptoms']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
+    summary.innerHTML=[[monthDays.length,'days logged'],[avg,'average day-state score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days'],[symptomDays,'days with physical symptoms']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
   }
 }
 
 function daySignals(day) {
   const d=normalizedTrackerDay(day); const out=[];
+  if(d.tone==='high')out.push(['tone-high','Lighter emotional tone']); if(d.tone==='low')out.push(['tone-low','Heavier emotional tone']);
   if(d.motivation==='high')out.push(['motivation-high','High motivation']); if(d.motivation==='low')out.push(['motivation-low','Low motivation']);
+  if(d.energy==='high')out.push(['energy-high','High energy']); if(d.energy==='low')out.push(['energy-low','Low energy']);
   if(d.capacity==='high')out.push(['capacity-high','Higher capacity']); if(d.capacity==='low')out.push(['capacity-low','Lower capacity']);
+  if(d.enjoyment==='high')out.push(['enjoyment-high','More enjoyment / spark']); if(d.enjoyment==='low')out.push(['enjoyment-low','Less enjoyment / spark']);
   d.changes.forEach(k=>out.push([`change-${k}`,TRACKER_CHANGE_LABELS[k]||k]));
   Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
+  d.functioning.filter(k=>k==='homeworkHard'||k==='choresHard').forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
   return out;
 }
 function findClusters(dateKeys, qualifies) {
@@ -1534,8 +1585,8 @@ function analyzeClusterRhythm(clusters,label){
 }
 function rhythmAnalysis(days) {
   const keys=days.map(([k])=>k);
-  const downClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.motivation==='low')n++; if(d.capacity==='low')n++; ['anxious','irritable','overwhelmed','reactive'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
-  const upClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.motivation==='high')n++; if(d.capacity==='high')n++; ['confident','patient','social','affection','interested'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
+  const downClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.tone==='low')n++; if(d.motivation==='low')n++; if(d.energy==='low')n++; if(d.capacity==='low')n++; if(d.enjoyment==='low')n++; ['down','flat','anxious','irritable','overwhelmed','reactive'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
+  const upClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.tone==='high')n++; if(d.motivation==='high')n++; if(d.energy==='high')n++; if(d.capacity==='high')n++; if(d.enjoyment==='high')n++; ['content','confident','patient','social','affection','interested'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
   const physicalClusters=findClusters(keys,day=>Object.values(normalizedTrackerDay(day).symptoms).some(Boolean));
   const down=analyzeClusterRhythm(downClusters,'Down-state');
   const up=analyzeClusterRhythm(upClusters,'Up-state');
@@ -1593,7 +1644,7 @@ function renderTrackerInsights(){
   const avg=scored.length?(scored.reduce((a,b)=>a+Number(b.score),0)/scored.length).toFixed(1):'—';
   const highMot=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high').length;
   const lowCap=days.filter(([,d])=>normalizedTrackerDay(d).capacity==='low').length;
-  document.getElementById('statsRow').innerHTML=[[days.length,'days tracked'],[avg,'average emotional score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
+  document.getElementById('statsRow').innerHTML=[[days.length,'days tracked'],[avg,'average day-state score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
   const changeCounts={}; days.forEach(([,day])=>normalizedTrackerDay(day).changes.forEach(k=>changeCounts[k]=(changeCounts[k]||0)+1));
   const changes=Object.entries(changeCounts).sort((a,b)=>b[1]-a[1]).slice(0,7), max=changes[0]?.[1]||1;
   document.getElementById('emotionBars').innerHTML=changes.length?changes.map(([k,c])=>`<div class="bar-row"><span>${escapeHtml(TRACKER_CHANGE_LABELS[k]||k)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(10,c/max*100)}%"></div></div><strong>${c}</strong></div>`).join(''):'<p class="gentle-note">No repeated changes logged yet.</p>';
@@ -1602,7 +1653,7 @@ function renderTrackerInsights(){
   const rhythm=rhythmAnalysis(days); const patterns=[];
   rhythm.summaries.forEach(x=>patterns.push(`<strong>${escapeHtml(x.label)}</strong><br>${escapeHtml(x.text.replace(`${x.label}: `,''))}`));
   const highMotDays=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high' && calculateTrackerMood(d).score!=null);
-  if(highMotDays.length>=4){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>Motivation stays separate from mood.</strong><br>Across ${highMotDays.length} high-motivation days, the average emotional score is ${a}/10. This describes co-occurrence only; high motivation is not scored as emotionally good or bad.`);}
+  if(highMotDays.length>=4){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>High-motivation days in context.</strong><br>Across ${highMotDays.length} high-motivation days, the average overall day-state score is ${a}/10. Motivation contributes modestly to the score, but it is still analyzed separately so it cannot stand in for mood by itself.`);}
   document.getElementById('patternCards').innerHTML=patterns.map(t=>`<div class="pattern-card">${t}</div>`).join('');
   const entries=app.data.entries||[]; const discoveries=entries.filter(e=>e.type==='discovery');
   document.getElementById('discoverySummary').innerHTML=entries.length?`<div class="discovery-mini"><strong>${entries.length} guided reflection${entries.length===1?'':'s'}</strong><span>${discoveries.length ? `${discoveries.length} are explicit self-discoveries. ` : ''}These stay separate from the daily tracker but can add context when you review a pattern with your counselor.</span></div>`:'<p class="gentle-note">No guided reflections saved yet. Use them only when they are useful; daily tracking is now the main part of Inner Compass.</p>';
@@ -1614,7 +1665,7 @@ function parseCsv(text){
   const headers=rows.shift().map(x=>x.trim()); return rows.filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]??'').trim()])));
 }
 function splitBearableDetails(text){return String(text||'').split('|').map(x=>x.trim()).filter(Boolean);}
-function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('emotionally sensitive'))return'legacySensitive'; if(s.includes('affection')||s.includes('attention'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
+function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('sad')||s.includes('down'))return'down'; if(s.includes('flat')||s.includes('numb'))return'flat'; if(s.includes('happy')||s.includes('content'))return'content'; if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('emotionally sensitive'))return'legacySensitive'; if(s.includes('affection')||s.includes('attention'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
 function mapBearableFunction(label){const s=label.toLowerCase(); if(s.includes('did homework'))return'homework'; if(s.includes('did chores'))return'chores'; if(s.includes('exerc'))return'exercise'; if(s.includes('homework')&&s.includes('hard'))return'homeworkHard'; if(s.includes('chore')&&s.includes('hard'))return'choresHard'; return null;}
 function mapBearableContext(label){const s=label.toLowerCase(); if(s.includes('poor sleep'))return'poorSleep'; if(s.includes('stress'))return'highStress'; if(s.includes('busy'))return'busy'; if(s.includes('sick')||s.includes('unwell'))return'sick'; return null;}
 function mapBearableSymptom(label){const s=label.toLowerCase(); if(s.includes('cramp'))return'cramping'; if(s.includes('bloat'))return'bloating'; if(s.includes('headache'))return'headache'; if(s.includes('tender breast')||s.includes('breast tender'))return'breastTenderness'; if(s.includes('indigestion')||s.includes('gi '))return'indigestion'; if(s.includes('body ache'))return'bodyAches'; return null;}

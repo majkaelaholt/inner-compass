@@ -46,77 +46,90 @@
       </header>
 
       <section class="screen active" id="screen-home">
-        <div class="tracker-hero">
+        <div class="tracker-hero tracker-hero-compact">
           <div>
             <p class="eyebrow">Daily pattern tracker</p>
             <h2 id="trackerDateHeading">Today</h2>
-            <p>Notice what changes from your normal. Check or uncheck things whenever you notice them; everything saves automatically.</p>
+            <p>Log changes whenever you notice them. Inner Compass builds the overall day-state score from the pattern instead of making you invent a number.</p>
           </div>
           <div class="tracker-date-control">
             <label for="trackerDate">Editing date</label>
             <input id="trackerDate" type="date" />
+            <button class="secondary-button small typical-day-button" type="button" id="markDayLogged">Count today as checked in</button>
             <span id="trackerSaveStatus" class="save-status">Saved</span>
           </div>
         </div>
 
         <div class="tracker-layout">
           <div class="tracker-main">
-            <article class="panel tracker-score-builder">
-              <div class="panel-heading">
+            <article class="panel tracker-score-builder smart-score-card">
+              <div class="panel-heading compact-heading">
                 <div>
-                  <p class="eyebrow">Emotional day</p>
-                  <h3>Let the app help build the score</h3>
+                  <p class="eyebrow">Overall day state</p>
+                  <h3>Built from what you actually notice</h3>
                 </div>
-                <div class="day-score" aria-live="polite"><strong id="trackerMoodScore">5</strong><span>/10</span></div>
+                <div class="day-score" aria-live="polite"><strong id="trackerMoodScore">—</strong><span>/10</span></div>
               </div>
-              <p class="tracker-help">Start with the closest overall description. The score then responds to the emotional signals you log below — motivation and productivity do not change it.</p>
-              <div class="choice-section">
-                <span class="field-label">Compared with your usual emotional baseline, today has felt…</span>
-                <div class="anchor-choice-grid" id="moodAnchorChoices">
-                  <button type="button" data-mood-anchor="harder">Harder than usual</button>
-                  <button type="button" data-mood-anchor="typical">Typical / mixed</button>
-                  <button type="button" data-mood-anchor="better">Better than usual</button>
-                </div>
-              </div>
-              <div class="binary-grid mood-builder-toggles">
-                <button type="button" data-day-flag="negativeDominated">Negative feelings took up a meaningful part of the day</button>
-                <button type="button" data-day-flag="positiveStoodOut">Positive feelings genuinely stood out</button>
-                <button type="button" data-day-flag="emotionsInterfered">Emotions made normal responsibilities noticeably harder</button>
-              </div>
-              <div class="score-explanation" id="trackerScoreExplanation"></div>
-              <div class="score-nudge">
-                <span>Does the estimate feel slightly off?</span>
-                <div class="mini-segmented">
-                  <button type="button" data-score-adjust="-1">−1</button>
-                  <button type="button" data-score-adjust="0">Looks right</button>
-                  <button type="button" data-score-adjust="1">+1</button>
-                </div>
-                <small>You can only nudge it one point, so the score stays grounded in what you logged.</small>
-              </div>
-            </article>
+              <p class="tracker-help">You do not need to choose a mood number. A logged day starts around your normal baseline, then motivation, energy, capacity, enjoyment, emotional tone, symptoms, and other signals gently move the estimate.</p>
 
-            <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Capacity</p><h3>How usable did you feel?</h3></div></div>
-              <p class="tracker-help definition-intro">Only change these when they noticeably stand out. On a day you log, leaving them at Typical means there was no noticeable change from your normal.</p>
-              <div class="dual-state-grid">
-                <fieldset class="state-fieldset">
-                  <legend>Motivation</legend>
-                  <p class="state-definition">How much drive you had to start or do things.</p>
+              <div class="core-state-grid" aria-label="Core daily state">
+                <div class="core-state-row">
+                  <div class="core-state-copy"><strong>Emotional tone</strong><small>Your general emotional “weather,” separate from one anxious or irritating moment.</small></div>
+                  <div class="state-choice" data-choice-group="tone">
+                    <button type="button" data-choice-value="low">↓ Heavier</button>
+                    <button type="button" data-choice-value="typical">Typical</button>
+                    <button type="button" data-choice-value="high">↑ Lighter</button>
+                  </div>
+                </div>
+                <div class="core-state-row">
+                  <div class="core-state-copy"><strong>Motivation</strong><small>How much drive you had to start or do things.</small></div>
                   <div class="state-choice" data-choice-group="motivation">
                     <button type="button" data-choice-value="low">↓ Low</button>
                     <button type="button" data-choice-value="typical">Typical</button>
                     <button type="button" data-choice-value="high">↑ High</button>
                   </div>
-                </fieldset>
-                <fieldset class="state-fieldset">
-                  <legend>Overall capacity</legend>
-                  <p class="state-definition">How much mental and emotional bandwidth you had to handle demands.</p>
+                </div>
+                <div class="core-state-row">
+                  <div class="core-state-copy"><strong>Energy</strong><small>Your actual fuel / alertness — different from wanting to do something.</small></div>
+                  <div class="state-choice" data-choice-group="energy">
+                    <button type="button" data-choice-value="low">↓ Low</button>
+                    <button type="button" data-choice-value="typical">Typical</button>
+                    <button type="button" data-choice-value="high">↑ High</button>
+                  </div>
+                </div>
+                <div class="core-state-row">
+                  <div class="core-state-copy"><strong>Capacity</strong><small>How much mental and emotional bandwidth you had to handle demands.</small></div>
                   <div class="state-choice" data-choice-group="capacity">
                     <button type="button" data-choice-value="low">↓ Lower</button>
                     <button type="button" data-choice-value="typical">Typical</button>
                     <button type="button" data-choice-value="high">↑ Higher</button>
                   </div>
-                </fieldset>
+                </div>
+                <div class="core-state-row">
+                  <div class="core-state-copy"><strong>Enjoyment / spark</strong><small>Whether normal things felt rewarding, interesting, or enjoyable.</small></div>
+                  <div class="state-choice" data-choice-group="enjoyment">
+                    <button type="button" data-choice-value="low">↓ Less</button>
+                    <button type="button" data-choice-value="typical">Typical</button>
+                    <button type="button" data-choice-value="high">↑ More</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="binary-grid compact-binary-grid">
+                <button type="button" data-day-flag="negativeDominated">Rough feelings lingered for a meaningful part of the day</button>
+                <button type="button" data-day-flag="positiveStoodOut">A genuinely good / enjoyable stretch stood out</button>
+                <button type="button" data-day-flag="emotionsInterfered">Emotions made normal responsibilities noticeably harder</button>
+              </div>
+
+              <div class="score-explanation" id="trackerScoreExplanation"></div>
+              <div class="score-nudge">
+                <span>Estimate close, but not quite?</span>
+                <div class="mini-segmented">
+                  <button type="button" data-score-adjust="-1">−1</button>
+                  <button type="button" data-score-adjust="0">Looks right</button>
+                  <button type="button" data-score-adjust="1">+1</button>
+                </div>
+                <small>The nudge is deliberately small. Raw signals stay saved separately, so pattern analysis does not depend only on this number.</small>
               </div>
             </article>
 
@@ -124,6 +137,9 @@
               <div class="panel-heading"><div><p class="eyebrow">Changes from normal</p><h3>What feels turned up or different?</h3></div></div>
               <p class="tracker-help">Tap only what is noticeably stronger than your normal baseline.</p>
               <div class="tracker-toggle-grid" id="changeToggles">
+                <button type="button" data-track-toggle="changes" data-value="down">More sad / down</button>
+                <button type="button" data-track-toggle="changes" data-value="flat">More flat / emotionally “blah”</button>
+                <button type="button" data-track-toggle="changes" data-value="content">More happy / content</button>
                 <button type="button" data-track-toggle="changes" data-value="anxious">More anxious / worried</button>
                 <button type="button" data-track-toggle="changes" data-value="irritable">More irritable</button>
                 <button type="button" data-track-toggle="changes" data-value="overwhelmed">Easily overwhelmed</button>
@@ -171,10 +187,12 @@
                   <button type="button" data-track-toggle="context" data-value="sick">Sick / unwell</button>
                 </div>
               </div>
-              <label class="tracker-notes-label">
-                <span class="field-label">Anything worth remembering?</span>
-                <textarea id="trackerNotes" rows="3" placeholder="Optional: what happened, what you noticed, or why today felt different…"></textarea>
-              </label>
+              <details class="tracker-notes-details">
+                <summary>Anything worth remembering? <span>optional note</span></summary>
+                <label class="tracker-notes-label">
+                  <textarea id="trackerNotes" rows="3" placeholder="What happened, what you noticed, or why today felt different…"></textarea>
+                </label>
+              </details>
             </article>
           </div>
 

@@ -72,3 +72,14 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Added tentative pattern/rhythm analysis that waits for repeated clusters before offering a possible forecast. It does not label hormonal phases.
 - Added Bearable CSV import. Health-metric-only dates are ignored, and historical Bearable days are marked as imported.
 - Guided reflection, Free-Time Compass, and Reality Check remain available as secondary tools.
+
+
+## Version 7 additions
+- Reworked the score into an **overall day-state score** that is calculated for every logged day; no manual mood anchor is required.
+- Added distinct **Emotional tone, Energy, and Enjoyment / spark** states alongside Motivation and Capacity.
+- Low/high motivation and capacity now contribute modestly to the overall score while remaining separate raw signals for pattern analysis.
+- Added direct mood clues: **More sad/down, More flat/blah, More happy/content**.
+- Physical symptoms affect the day score only slightly and are capped; outside context is tracked but does not directly alter the score.
+- Added a one-tap **Count today as checked in** action so a quiet/typical day is distinguishable from a forgotten day.
+- Pattern associations now include core states, hard-to-initiate functioning, and context such as poor sleep or outside stress.
+- Tightened the tracker layout, especially on mobile, and collapsed optional notes.
