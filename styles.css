@@ -536,3 +536,62 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 350px) {
   .tracker-toggle-grid, .compact-grid, .symptom-grid { grid-template-columns: 1fr; }
 }
+
+/* Version 8: plan follow-through */
+.function-definition {
+  margin: -4px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #faf6f4;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.function-definition strong { color: var(--text); }
+.plan-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+.plan-card { min-width: 0; border: 1px solid var(--line); border-radius: 15px; background: #fffdfb; padding: 12px; }
+.plan-card-heading { display: flex; justify-content: space-between; gap: 8px; align-items: start; margin-bottom: 9px; }
+.plan-card-heading small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.plan-outcome-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+.plan-outcome-grid button,
+.plan-extra-row button,
+.mini-choice-row button {
+  border: 1px solid var(--line);
+  background: #fffdfb;
+  color: var(--text);
+  border-radius: 11px;
+  min-height: 40px;
+  padding: 8px 9px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.plan-outcome-grid button.selected,
+.plan-extra-row button.selected,
+.mini-choice-row button.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  box-shadow: inset 0 0 0 1px rgba(143,106,116,.08);
+}
+.plan-reason { margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--line); }
+.plan-reason > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 750; }
+.mini-choice-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+.mini-choice-row button { min-height: 35px; padding: 6px 8px; font-size: 10px; }
+.plan-extra-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; margin-top: 9px; }
+.plan-extra-row button { min-height: 38px; }
+.compact-subsection { margin-top: 2px; }
+
+@media (max-width: 760px) {
+  .plan-grid { grid-template-columns: 1fr; gap: 9px; }
+  .plan-card { padding: 11px; }
+  .plan-outcome-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .plan-outcome-grid button { min-height: 39px; padding: 7px 8px; }
+  .plan-extra-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 380px) {
+  .plan-outcome-grid, .plan-extra-row, .mini-choice-row { grid-template-columns: 1fr; }
+}

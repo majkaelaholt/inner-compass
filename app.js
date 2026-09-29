@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 7;
+const APP_VERSION = 8;
 
 const emotionSupport = {
   Frustration: {
@@ -479,6 +479,20 @@ function loadData() {
         if (!day.tone) day.tone = day.moodAnchor === 'harder' ? 'low' : day.moodAnchor === 'better' ? 'high' : 'typical';
         if (!day.energy) day.energy = 'typical';
         if (!day.enjoyment) day.enjoyment = 'typical';
+      });
+    }
+    // v8 replaces vague “did homework/chores” with explicit plan outcomes.
+    // Old Bearable/current-history toggles are preserved as legacy signals rather than being reinterpreted as plan completion.
+    if (Number(parsed.version || 0) < 8) {
+      Object.values(trackerDays).forEach(day => {
+        if (!day || typeof day !== 'object') return;
+        if (!('schoolPlanOutcome' in day)) day.schoolPlanOutcome = null;
+        if (!('chorePlanOutcome' in day)) day.chorePlanOutcome = null;
+        if (!('schoolPlanReason' in day)) day.schoolPlanReason = null;
+        if (!('chorePlanReason' in day)) day.chorePlanReason = null;
+        if (Array.isArray(day.functioning)) {
+          day.functioning = day.functioning.map(x => x === 'homework' ? 'legacyHomework' : x === 'chores' ? 'legacyChores' : x);
+        }
       });
     }
     return {
@@ -1305,7 +1319,9 @@ const TRACKER_CHANGE_LABELS = {
   affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
   legacySensitive: 'Emotionally sensitive (Bearable)'
 };
-const TRACKER_FUNCTION_LABELS = { homework: 'Did homework', chores: 'Did chores', exercise: 'Exercised', homeworkHard: 'Homework hard to initiate', choresHard: 'Chores hard to initiate' };
+const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate', choresHard: 'Chores hard to initiate' };
+const TRACKER_PLAN_LABELS = { none: 'No plan', met: 'Met plan', revisedMet: 'Met revised plan', unmet: 'Left plan unfinished' };
+const TRACKER_PLAN_REASON_LABELS = { logistics: 'Logistics / schedule', capacity: 'Motivation / energy / capacity', both: 'Both logistics and capacity', other: 'Other reason' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
 const TRACKER_SYMPTOM_LABELS = { cramping: 'Cramping', bloating: 'Bloating', headache: 'Headache', breastTenderness: 'Breast tenderness', indigestion: 'GI / indigestion', bodyAches: 'Body aches' };
 
@@ -1320,7 +1336,7 @@ function dateFromKey(key) {
   return new Date(y || 2000, (m || 1) - 1, d || 1);
 }
 function trackerDayDefaults() {
-  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], context: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
+  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], schoolPlanOutcome: null, chorePlanOutcome: null, schoolPlanReason: null, chorePlanReason: null, context: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
 }
 function getTrackerDay(key, create = false) {
   app.data.trackerDays = app.data.trackerDays || {};
@@ -1403,10 +1419,14 @@ function calculateTrackerMood(day) {
   if (d.dayFlags.emotionsInterfered) { score -= 0.50; parts.push('emotions interfered with responsibilities'); }
 
   let functionDrag = 0;
-  if (d.functioning.includes('homeworkHard')) functionDrag -= 0.25;
-  if (d.functioning.includes('choresHard')) functionDrag -= 0.25;
-  score += Math.max(-0.50, functionDrag);
-  if (functionDrag < 0) parts.push('starting responsibilities was unusually hard');
+  if (d.functioning.includes('homeworkHard')) functionDrag -= 0.22;
+  if (d.functioning.includes('choresHard')) functionDrag -= 0.22;
+  if (d.schoolPlanOutcome === 'unmet') functionDrag -= 0.18;
+  if (d.chorePlanOutcome === 'unmet') functionDrag -= 0.18;
+  score += Math.max(-0.65, functionDrag);
+  if (d.functioning.includes('homeworkHard') || d.functioning.includes('choresHard')) parts.push('starting responsibilities was unusually hard');
+  if (d.schoolPlanOutcome === 'unmet' || d.chorePlanOutcome === 'unmet') parts.push('some planned responsibilities stayed unfinished');
+  if (d.schoolPlanOutcome === 'revisedMet' || d.chorePlanOutcome === 'revisedMet') parts.push('a revised plan was still met');
 
   // Physical discomfort matters to how a day feels, but is intentionally capped so cramps/headaches cannot define the whole day.
   let symptomDrag = 0;
@@ -1452,6 +1472,19 @@ function renderTrackerHome(preserveNotesFocus = true) {
     const key = group.dataset.choiceGroup;
     group.querySelectorAll('[data-choice-value]').forEach(btn => setButtonSelected(btn, day[key] === btn.dataset.choiceValue));
   });
+  document.querySelectorAll('[data-plan-outcome-group]').forEach(group => {
+    const key = group.dataset.planOutcomeGroup;
+    group.querySelectorAll('[data-plan-outcome]').forEach(btn => setButtonSelected(btn, day[key] === btn.dataset.planOutcome));
+  });
+  document.querySelectorAll('[data-plan-reason-group]').forEach(group => {
+    const key = group.dataset.planReasonGroup;
+    group.querySelectorAll('[data-plan-reason]').forEach(btn => setButtonSelected(btn, day[key] === btn.dataset.planReason));
+  });
+  document.querySelectorAll('[data-plan-reason-wrap]').forEach(wrap => {
+    const domain = wrap.dataset.planReasonWrap;
+    const outcome = domain === 'school' ? day.schoolPlanOutcome : day.chorePlanOutcome;
+    wrap.classList.toggle('hidden', !(outcome === 'revisedMet' || outcome === 'unmet'));
+  });
   document.querySelectorAll('[data-track-toggle]').forEach(btn => {
     const bucket = btn.dataset.trackToggle;
     setButtonSelected(btn, Array.isArray(day[bucket]) && day[bucket].includes(btn.dataset.value));
@@ -1467,7 +1500,7 @@ function renderTrackerHome(preserveNotesFocus = true) {
   const notes = document.getElementById('trackerNotes');
   if (notes && (!preserveNotesFocus || document.activeElement !== notes)) notes.value = day.notes || '';
   const expl = document.getElementById('trackerScoreExplanation');
-  if (expl) expl.innerHTML = `<strong>${mood.importedEstimate ? 'Rebuilt from Bearable signals' : mood.score == null ? 'No day logged yet' : 'How this score was built'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.importedEstimate ? '<small>The old Bearable mood number is ignored. This estimate uses the other signals that were actually logged, with missing new v7 dimensions treated as Typical.</small>' : '<small>This is an overall day-state estimate, not a depression score. Raw motivation, capacity, emotions, symptoms, and context remain separate for pattern analysis.</small>'}`;
+  if (expl) expl.innerHTML = `<strong>${mood.importedEstimate ? 'Rebuilt from Bearable signals' : mood.score == null ? 'No day logged yet' : 'How this score was built'}</strong><span>${escapeHtml(mood.parts.join(' · '))}</span>${mood.importedEstimate ? '<small>The old Bearable mood number is ignored. This estimate uses the other signals that were actually logged, with missing newer dimensions treated as Typical.</small>' : '<small>This is an overall day-state estimate, not a depression score. Raw motivation, capacity, emotions, symptoms, and context remain separate for pattern analysis.</small>'}`;
   const summary = [];
   if (day.tone !== 'typical') summary.push(`<span class="state-chip">Tone ${day.tone === 'high' ? '↑ lighter' : '↓ heavier'}</span>`);
   if (day.motivation !== 'typical') summary.push(`<span class="state-chip">Motivation ${day.motivation === 'high' ? '↑ high' : '↓ low'}</span>`);
@@ -1475,6 +1508,10 @@ function renderTrackerHome(preserveNotesFocus = true) {
   if (day.capacity !== 'typical') summary.push(`<span class="state-chip">Capacity ${day.capacity === 'high' ? '↑ high' : '↓ low'}</span>`);
   if (day.enjoyment !== 'typical') summary.push(`<span class="state-chip">Enjoyment ${day.enjoyment === 'high' ? '↑ more' : '↓ less'}</span>`);
   day.changes.slice(0,5).forEach(x => summary.push(`<span class="state-chip">${escapeHtml(TRACKER_CHANGE_LABELS[x] || x)}</span>`));
+  if (day.schoolPlanOutcome === 'revisedMet') summary.push('<span class="state-chip">School plan revised ✓</span>');
+  else if (day.schoolPlanOutcome === 'unmet') summary.push('<span class="state-chip">School plan unfinished</span>');
+  if (day.chorePlanOutcome === 'revisedMet') summary.push('<span class="state-chip">Chore plan revised ✓</span>');
+  else if (day.chorePlanOutcome === 'unmet') summary.push('<span class="state-chip">Chore plan unfinished</span>');
   const symptomCount = Object.values(day.symptoms).filter(Boolean).length;
   if (symptomCount) summary.push(`<span class="state-chip">${symptomCount} physical symptom${symptomCount===1?'':'s'}</span>`);
   if (day.importedBearable) summary.push('<span class="state-chip imported-chip">Bearable history</span>');
@@ -1499,6 +1536,20 @@ function installTrackerHandlers() {
   document.querySelectorAll('[data-day-flag]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const k=btn.dataset.dayFlag; day.dayFlags[k]=!day.dayFlags[k]; day.moodCustomTouched=true; saveTrackerDay(day); }));
   document.querySelectorAll('[data-score-adjust]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.scoreAdjustment=Number(btn.dataset.scoreAdjust); day.moodCustomTouched=true; saveTrackerDay(day); }));
   document.querySelectorAll('[data-choice-group] [data-choice-value]').forEach(btn => btn.addEventListener('click', () => { const group=btn.closest('[data-choice-group]').dataset.choiceGroup; const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day[group]=btn.dataset.choiceValue; saveTrackerDay(day); }));
+  document.querySelectorAll('[data-plan-outcome-group] [data-plan-outcome]').forEach(btn => btn.addEventListener('click', () => {
+    const group=btn.closest('[data-plan-outcome-group]').dataset.planOutcomeGroup;
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
+    day[group]=btn.dataset.planOutcome;
+    const reasonKey=group==='schoolPlanOutcome'?'schoolPlanReason':'chorePlanReason';
+    if (!(day[group]==='revisedMet'||day[group]==='unmet')) day[reasonKey]=null;
+    saveTrackerDay(day);
+  }));
+  document.querySelectorAll('[data-plan-reason-group] [data-plan-reason]').forEach(btn => btn.addEventListener('click', () => {
+    const group=btn.closest('[data-plan-reason-group]').dataset.planReasonGroup;
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
+    day[group]=day[group]===btn.dataset.planReason?null:btn.dataset.planReason;
+    saveTrackerDay(day);
+  }));
   document.querySelectorAll('[data-track-toggle]').forEach(btn => btn.addEventListener('click', () => updateTrackerArray(btn.dataset.trackToggle, btn.dataset.value)));
   document.querySelectorAll('[data-symptom]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const key=btn.dataset.symptom; const current=Number(day.symptoms[key]||0); day.symptoms[key]=current>=2?0:current+1; if (!day.symptoms[key]) delete day.symptoms[key]; saveTrackerDay(day); }));
   const notes=document.getElementById('trackerNotes');
@@ -1552,7 +1603,11 @@ function daySignals(day) {
   if(d.enjoyment==='high')out.push(['enjoyment-high','More enjoyment / spark']); if(d.enjoyment==='low')out.push(['enjoyment-low','Less enjoyment / spark']);
   d.changes.forEach(k=>out.push([`change-${k}`,TRACKER_CHANGE_LABELS[k]||k]));
   Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
-  d.functioning.filter(k=>k==='homeworkHard'||k==='choresHard').forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  if (d.schoolPlanOutcome && d.schoolPlanOutcome !== 'none') out.push([`school-plan-${d.schoolPlanOutcome}`, `School: ${TRACKER_PLAN_LABELS[d.schoolPlanOutcome]||d.schoolPlanOutcome}`]);
+  if (d.chorePlanOutcome && d.chorePlanOutcome !== 'none') out.push([`chore-plan-${d.chorePlanOutcome}`, `Chores: ${TRACKER_PLAN_LABELS[d.chorePlanOutcome]||d.chorePlanOutcome}`]);
+  if (d.schoolPlanReason) out.push([`school-reason-${d.schoolPlanReason}`, `School plan changed: ${TRACKER_PLAN_REASON_LABELS[d.schoolPlanReason]||d.schoolPlanReason}`]);
+  if (d.chorePlanReason) out.push([`chore-reason-${d.chorePlanReason}`, `Chore plan changed: ${TRACKER_PLAN_REASON_LABELS[d.chorePlanReason]||d.chorePlanReason}`]);
+  d.functioning.filter(k=>['homeworkHard','choresHard','schoolAhead','choresExtra','exercise'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
   d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
   return out;
 }
@@ -1666,7 +1721,7 @@ function parseCsv(text){
 }
 function splitBearableDetails(text){return String(text||'').split('|').map(x=>x.trim()).filter(Boolean);}
 function mapBearableChange(label){const s=label.toLowerCase(); if(s.includes('sad')||s.includes('down'))return'down'; if(s.includes('flat')||s.includes('numb'))return'flat'; if(s.includes('happy')||s.includes('content'))return'content'; if(s.includes('anxious'))return'anxious'; if(s.includes('irritable'))return'irritable'; if(s.includes('overwhelm'))return'overwhelmed'; if(s.includes('brain fog'))return'brainFog'; if(s.includes('confident'))return'confident'; if(s.includes('patient'))return'patient'; if(s.includes('social'))return'social'; if(s.includes('emotionally sensitive'))return'legacySensitive'; if(s.includes('affection')||s.includes('attention'))return'affection'; if(s.includes('hobbies')||s.includes('projects'))return'interested'; return null;}
-function mapBearableFunction(label){const s=label.toLowerCase(); if(s.includes('did homework'))return'homework'; if(s.includes('did chores'))return'chores'; if(s.includes('exerc'))return'exercise'; if(s.includes('homework')&&s.includes('hard'))return'homeworkHard'; if(s.includes('chore')&&s.includes('hard'))return'choresHard'; return null;}
+function mapBearableFunction(label){const s=label.toLowerCase(); if(s.includes('did homework'))return'legacyHomework'; if(s.includes('did chores'))return'legacyChores'; if(s.includes('exerc'))return'exercise'; if(s.includes('homework')&&s.includes('hard'))return'homeworkHard'; if(s.includes('chore')&&s.includes('hard'))return'choresHard'; return null;}
 function mapBearableContext(label){const s=label.toLowerCase(); if(s.includes('poor sleep'))return'poorSleep'; if(s.includes('stress'))return'highStress'; if(s.includes('busy'))return'busy'; if(s.includes('sick')||s.includes('unwell'))return'sick'; return null;}
 function mapBearableSymptom(label){const s=label.toLowerCase(); if(s.includes('cramp'))return'cramping'; if(s.includes('bloat'))return'bloating'; if(s.includes('headache'))return'headache'; if(s.includes('tender breast')||s.includes('breast tender'))return'breastTenderness'; if(s.includes('indigestion')||s.includes('gi '))return'indigestion'; if(s.includes('body ache'))return'bodyAches'; return null;}
 function importBearableCsv(file){

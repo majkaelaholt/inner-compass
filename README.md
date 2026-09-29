@@ -83,3 +83,13 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Added a one-tap **Count today as checked in** action so a quiet/typical day is distinguishable from a forgotten day.
 - Pattern associations now include core states, hard-to-initiate functioning, and context such as poor sleep or outside stress.
 - Tightened the tracker layout, especially on mobile, and collapsed optional notes.
+
+
+## Version 8 additions
+- Replaced vague **Did homework / Did chores** toggles with explicit plan outcomes for school and chores: no plan, met plan, met a reduced/rescheduled plan, or left planned work unfinished.
+- Added optional reasons when a plan changes so practical/logistical rescheduling is distinguishable from changes driven by motivation, energy, or capacity.
+- Added **Worked ahead** and **Did extra chores** so meeting the plan is distinguishable from unusually high output.
+- Kept **Hard to initiate** as a separate signal, because completion and initiation cost can tell different stories.
+- Added guidance for split school tasks: count each part on the day it was intentionally planned, rather than waiting for the whole lesson to be complete.
+- Preserved older Bearable “Did homework / Did chores” data as legacy signals instead of pretending those vague historical entries mean the newer plan-based outcomes.
+- Pattern analysis can now compare plan outcomes/reasons with motivation, capacity, mood-state, symptoms, and context.

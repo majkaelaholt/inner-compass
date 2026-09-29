@@ -166,17 +166,64 @@
             </article>
 
             <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">What happened</p><h3>Functioning & context</h3></div></div>
-              <div class="tracker-subsection">
-                <span class="field-label">Functioning</span>
+              <div class="panel-heading"><div><p class="eyebrow">Follow-through</p><h3>Plans, effort & context</h3></div></div>
+              <p class="function-definition"><strong>Met the plan</strong> means you completed what you intentionally decided counted for that day — including a revised plan. If a lesson is split across days, log the podcast on the day you planned to listen and the quiz on the day you planned to take it.</p>
+
+              <div class="plan-grid">
+                <section class="plan-card" data-plan-domain="school">
+                  <div class="plan-card-heading"><div><span class="field-label">School</span><small>How did the day’s plan land?</small></div></div>
+                  <div class="plan-outcome-grid" data-plan-outcome-group="schoolPlanOutcome">
+                    <button type="button" data-plan-outcome="none">No school planned</button>
+                    <button type="button" data-plan-outcome="met">Met today’s plan</button>
+                    <button type="button" data-plan-outcome="revisedMet">Met a reduced / rescheduled plan</button>
+                    <button type="button" data-plan-outcome="unmet">Left planned work unfinished</button>
+                  </div>
+                  <div class="plan-reason hidden" data-plan-reason-wrap="school">
+                    <span>Why did the plan change?</span>
+                    <div class="mini-choice-row" data-plan-reason-group="schoolPlanReason">
+                      <button type="button" data-plan-reason="logistics">Logistics / schedule</button>
+                      <button type="button" data-plan-reason="capacity">My motivation / energy / capacity</button>
+                      <button type="button" data-plan-reason="both">Both</button>
+                      <button type="button" data-plan-reason="other">Other</button>
+                    </div>
+                  </div>
+                  <div class="plan-extra-row">
+                    <button type="button" data-track-toggle="functioning" data-value="schoolAhead">Worked ahead</button>
+                    <button type="button" data-track-toggle="functioning" data-value="homeworkHard">Hard to initiate</button>
+                  </div>
+                </section>
+
+                <section class="plan-card" data-plan-domain="chores">
+                  <div class="plan-card-heading"><div><span class="field-label">Chores</span><small>Use your chore app’s final plan for the day.</small></div></div>
+                  <div class="plan-outcome-grid" data-plan-outcome-group="chorePlanOutcome">
+                    <button type="button" data-plan-outcome="none">No chores planned</button>
+                    <button type="button" data-plan-outcome="met">Met today’s plan</button>
+                    <button type="button" data-plan-outcome="revisedMet">Met a reduced / rescheduled plan</button>
+                    <button type="button" data-plan-outcome="unmet">Left planned chores unfinished</button>
+                  </div>
+                  <div class="plan-reason hidden" data-plan-reason-wrap="chores">
+                    <span>Why did the plan change?</span>
+                    <div class="mini-choice-row" data-plan-reason-group="chorePlanReason">
+                      <button type="button" data-plan-reason="logistics">Logistics / schedule</button>
+                      <button type="button" data-plan-reason="capacity">My motivation / energy / capacity</button>
+                      <button type="button" data-plan-reason="both">Both</button>
+                      <button type="button" data-plan-reason="other">Other</button>
+                    </div>
+                  </div>
+                  <div class="plan-extra-row">
+                    <button type="button" data-track-toggle="functioning" data-value="choresExtra">Did extra chores</button>
+                    <button type="button" data-track-toggle="functioning" data-value="choresHard">Hard to initiate</button>
+                  </div>
+                </section>
+              </div>
+
+              <div class="tracker-subsection compact-subsection">
+                <span class="field-label">Other functioning</span>
                 <div class="tracker-toggle-grid compact-grid">
-                  <button type="button" data-track-toggle="functioning" data-value="homework">Did homework / studied</button>
-                  <button type="button" data-track-toggle="functioning" data-value="chores">Did chores</button>
                   <button type="button" data-track-toggle="functioning" data-value="exercise">Exercised</button>
-                  <button type="button" data-track-toggle="functioning" data-value="homeworkHard">Homework was hard to initiate</button>
-                  <button type="button" data-track-toggle="functioning" data-value="choresHard">Chores were hard to initiate</button>
                 </div>
               </div>
+
               <div class="tracker-subsection">
                 <span class="field-label">Context that could affect the day</span>
                 <p class="context-definition"><strong>High outside stress</strong> = circumstances were unusually stressful. If life was normal but your brain was worrying more, use <strong>More anxious / worried</strong> instead.</p>

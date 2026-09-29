@@ -1,7 +1,7 @@
 {
   "name": "Inner Compass",
   "short_name": "Compass",
-  "description": "A private daily mood, motivation, capacity, symptom, and self-awareness pattern tracker with guided reflection tools.",
+  "description": "A private daily mood, motivation, capacity, symptom, plan follow-through, and self-awareness pattern tracker with guided reflection tools.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f1ed",
