@@ -133,6 +133,83 @@
               </div>
             </article>
 
+            <article class="panel big-event-panel">
+              <div class="panel-heading big-event-heading">
+                <div><p class="eyebrow">Big emotional moments</p><h3>Flag an acute blow-up without rewriting the whole day</h3></div>
+                <button class="secondary-button small" type="button" id="addBigEvent">+ Log big event</button>
+              </div>
+              <p class="tracker-help">Use this for a sudden, unusually intense emotional spike — crying, shutting down, feeling flooded, everything suddenly feeling too big, etc. It stays separate from the overall day-state score so an otherwise normal day can still carry an important event.</p>
+              <div id="bigEventList" class="big-event-list"></div>
+
+              <div id="bigEventEditor" class="big-event-editor hidden">
+                <input type="hidden" id="bigEventId" />
+                <div class="event-editor-grid">
+                  <div class="event-field">
+                    <span class="field-label">Intensity</span>
+                    <div class="event-choice-row" data-event-choice="intensity">
+                      <button type="button" data-event-value="big">Big</button>
+                      <button type="button" data-event-value="veryBig">Very big</button>
+                      <button type="button" data-event-value="overwhelming">Overwhelming</button>
+                    </div>
+                    <small>Big = clearly intense · Very big = hard to continue normally · Overwhelming = took over and needed real recovery/support.</small>
+                  </div>
+                  <div class="event-field">
+                    <span class="field-label">When?</span>
+                    <div class="event-choice-row" data-event-choice="timeOfDay">
+                      <button type="button" data-event-value="morning">Morning</button>
+                      <button type="button" data-event-value="afternoon">Afternoon</button>
+                      <button type="button" data-event-value="evening">Evening</button>
+                      <button type="button" data-event-value="night">Night</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="event-field">
+                  <span class="field-label">What showed up?</span>
+                  <div class="event-multi-grid" data-event-multi="feelings">
+                    <button type="button" data-event-value="crying">Crying / tearful</button>
+                    <button type="button" data-event-value="overwhelmed">Flooded / overwhelmed</button>
+                    <button type="button" data-event-value="anxious">Anxious / panicky</button>
+                    <button type="button" data-event-value="frustrated">Angry / frustrated</button>
+                    <button type="button" data-event-value="shutdown">Shut down / withdrew</button>
+                    <button type="button" data-event-value="chaos">Everything felt too big / chaotic</button>
+                  </div>
+                </div>
+
+                <div class="event-field">
+                  <span class="field-label">What seemed to set it off?</span>
+                  <div class="event-multi-grid" data-event-multi="triggers">
+                    <button type="button" data-event-value="plans">Plans changed / blocked</button>
+                    <button type="button" data-event-value="tech">Tech / logistics problem</button>
+                    <button type="button" data-event-value="schoolWork">School / work pressure</button>
+                    <button type="button" data-event-value="choresClutter">Chores / clutter / environment</button>
+                    <button type="button" data-event-value="relationship">Relationship / conflict</button>
+                    <button type="button" data-event-value="money">Money / spending</button>
+                    <button type="button" data-event-value="health">Body / health / pain</button>
+                    <button type="button" data-event-value="unknown">Not sure / other</button>
+                  </div>
+                </div>
+
+                <div class="event-field">
+                  <span class="field-label">How long did it affect you?</span>
+                  <div class="event-choice-row" data-event-choice="impact">
+                    <button type="button" data-event-value="brief">Brief spike (&lt;30 min)</button>
+                    <button type="button" data-event-value="while">Took a while (30 min–2 hr)</button>
+                    <button type="button" data-event-value="lingering">Lingered for hours / rest of day</button>
+                  </div>
+                </div>
+
+                <label class="event-note-label">
+                  <span class="field-label">What happened? <small>optional but useful for counselor review</small></span>
+                  <textarea id="bigEventNote" rows="3" placeholder="Example: My plan kept getting blocked by technical problems, I ran out of time, started crying, and suddenly the clutter felt unbearable."></textarea>
+                </label>
+                <div class="event-editor-actions">
+                  <button class="secondary-button small" type="button" id="cancelBigEvent">Cancel</button>
+                  <button class="primary-button" type="button" id="saveBigEvent">Save big event</button>
+                </div>
+              </div>
+            </article>
+
             <article class="panel">
               <div class="panel-heading"><div><p class="eyebrow">Changes from normal</p><h3>What feels turned up or different?</h3></div></div>
               <p class="tracker-help">Tap only what is noticeably stronger than your normal baseline.</p>
@@ -326,6 +403,7 @@
           <span><b>M↑/↓</b> motivation</span>
           <span><b>C↑/↓</b> capacity</span>
           <span><b>●</b> physical symptom</span>
+          <span><b>!</b> big emotional event</span>
         </div>
         <article class="panel calendar-panel">
           <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
@@ -346,7 +424,8 @@
           <div class="insight-grid">
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Most common</p><h3>Changes from your baseline</h3></div></div><div id="emotionBars" class="bar-list"></div></article>
             <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Observed together</p><h3>Signal comparisons</h3></div></div><div id="needChips" class="association-list"></div></article>
-            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Rhythm watch</p><h3>Down, up, physical, and transition patterns</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Rhythm watch</p><h3>Down, up, physical, big-event, and transition patterns</h3></div></div><div id="patternCards" class="pattern-list"></div></article>
+            <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Counselor review</p><h3>Big emotional events</h3></div></div><p class="tracker-help">These are intentionally separate from your overall day score. A 6-ish day can still contain one important blow-up.</p><div id="bigEventInsights" class="big-event-insights"></div></article>
             <article class="panel wide-panel"><div class="panel-heading"><div><p class="eyebrow">Reflection record</p><h3>What the guided tools are adding</h3></div><button class="text-button" data-go-screen="history">View reflection history</button></div><div id="discoverySummary" class="discovery-summary"></div></article>
           </div>
         </div>

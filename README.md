@@ -93,3 +93,12 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Added guidance for split school tasks: count each part on the day it was intentionally planned, rather than waiting for the whole lesson to be complete.
 - Preserved older Bearable “Did homework / Did chores” data as legacy signals instead of pretending those vague historical entries mean the newer plan-based outcomes.
 - Pattern analysis can now compare plan outcomes/reasons with motivation, capacity, mood-state, symptoms, and context.
+
+
+## Version 9 additions
+- Added **Big emotional moments** as a separate event log for sudden, unusually intense spikes such as crying, shutdown, overwhelm, or a blow-up.
+- Big events do **not automatically change the all-day score**, so an otherwise typical day can still preserve an important acute event.
+- Each event can capture intensity, time of day, what showed up, likely triggers, how long it affected you, and an optional description.
+- Big-event days are marked on the calendar with **!** and included in monthly summaries.
+- Added a counselor-review section on Patterns that keeps recent big events visible alongside the overall day score.
+- Big events, their triggers, and their emotional features can participate in association analysis, and repeated event clusters can be watched cautiously for rhythm without assuming a cycle phase.

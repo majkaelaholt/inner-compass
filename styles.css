@@ -595,3 +595,54 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 380px) {
   .plan-outcome-grid, .plan-extra-row, .mini-choice-row { grid-template-columns: 1fr; }
 }
+
+
+/* Version 9: big emotional moments */
+.big-event-panel { border-color: #dcc9cc; background: linear-gradient(145deg, #fffdfb, #fbf4f4); }
+.big-event-heading { align-items: center; }
+.big-event-heading .secondary-button { flex: 0 0 auto; }
+.big-event-list { display: grid; gap: 8px; }
+.big-event-empty { margin: 0; }
+.big-event-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 10px 11px; border: 1px solid #e4d5d7; border-radius: 13px; background: #fffdfb; }
+.big-event-item-main { display: grid; gap: 4px; min-width: 0; }
+.big-event-item-title { display: flex; align-items: center; gap: 7px; }
+.big-event-badge { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; background: #f4dddd; color: var(--danger); font-weight: 900; font-size: 12px; flex: 0 0 auto; }
+.big-event-item-main > span, .big-event-item-main > small { color: var(--muted); font-size: 10.5px; line-height: 1.4; }
+.big-event-item-main p { margin: 2px 0 0; font-size: 12px; line-height: 1.45; }
+.big-event-item-actions { display: flex; gap: 4px; align-items: start; }
+.danger-text { color: var(--danger); }
+.big-event-editor { margin-top: 12px; padding: 13px; border: 1px solid #ddc8cc; border-radius: 14px; background: #fffdfb; display: grid; gap: 12px; }
+.event-editor-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 10px; }
+.event-field { display: grid; gap: 6px; }
+.event-field > small { color: var(--muted); font-size: 9.5px; line-height: 1.4; }
+.event-choice-row, .event-multi-grid { display: grid; gap: 6px; }
+.event-choice-row { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.event-choice-row[data-event-choice="timeOfDay"] { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.event-choice-row[data-event-choice="impact"] { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.event-multi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.event-choice-row button, .event-multi-grid button { border: 1px solid var(--line); background: #fffdfb; color: var(--text); border-radius: 11px; min-height: 38px; padding: 7px 8px; cursor: pointer; text-align: left; font-size: 10.5px; line-height: 1.25; }
+.event-choice-row button.selected, .event-multi-grid button.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); box-shadow: inset 0 0 0 1px rgba(143,106,116,.08); }
+.event-note-label { display: grid; gap: 6px; }
+.event-note-label .field-label small { color: var(--muted); font-weight: 600; }
+.event-note-label textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; background: white; color: var(--text); line-height: 1.45; }
+.event-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.big-event-chip { background: #f5e1e2; color: #884b52; }
+.big-event-insights { display: grid; gap: 8px; }
+.big-event-review-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; padding: 10px 12px; border-radius: 12px; background: #faf1f1; border: 1px solid #ead8da; }
+.big-event-review-summary span { color: var(--muted); font-size: 11px; }
+.big-event-review-item { display: grid; gap: 4px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fffdfb; }
+.big-event-review-item > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; }
+.big-event-review-item span, .big-event-review-item small { color: var(--muted); font-size: 10.5px; line-height: 1.4; }
+.big-event-review-item p { margin: 2px 0 0; font-size: 12px; line-height: 1.45; }
+@media (max-width: 760px) {
+  .big-event-heading { align-items: flex-start; }
+  .big-event-heading { flex-direction: column; }
+  .big-event-item { grid-template-columns: 1fr; }
+  .big-event-item-actions { justify-content: flex-end; }
+  .event-editor-grid { grid-template-columns: 1fr; }
+  .event-choice-row, .event-choice-row[data-event-choice="timeOfDay"], .event-choice-row[data-event-choice="impact"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .event-multi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 380px) {
+  .event-choice-row, .event-choice-row[data-event-choice="timeOfDay"], .event-choice-row[data-event-choice="impact"], .event-multi-grid { grid-template-columns: 1fr; }
+}

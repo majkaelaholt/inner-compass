@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 
 const emotionSupport = {
   Frustration: {
@@ -493,6 +493,13 @@ function loadData() {
         if (Array.isArray(day.functioning)) {
           day.functioning = day.functioning.map(x => x === 'homework' ? 'legacyHomework' : x === 'chores' ? 'legacyChores' : x);
         }
+      });
+    }
+    // v9 adds rare acute emotional events as a separate signal from the all-day state score.
+    if (Number(parsed.version || 0) < 9) {
+      Object.values(trackerDays).forEach(day => {
+        if (!day || typeof day !== 'object') return;
+        if (!Array.isArray(day.bigEvents)) day.bigEvents = [];
       });
     }
     return {
@@ -1324,6 +1331,11 @@ const TRACKER_PLAN_LABELS = { none: 'No plan', met: 'Met plan', revisedMet: 'Met
 const TRACKER_PLAN_REASON_LABELS = { logistics: 'Logistics / schedule', capacity: 'Motivation / energy / capacity', both: 'Both logistics and capacity', other: 'Other reason' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
 const TRACKER_SYMPTOM_LABELS = { cramping: 'Cramping', bloating: 'Bloating', headache: 'Headache', breastTenderness: 'Breast tenderness', indigestion: 'GI / indigestion', bodyAches: 'Body aches' };
+const BIG_EVENT_INTENSITY_LABELS = { big: 'Big', veryBig: 'Very big', overwhelming: 'Overwhelming' };
+const BIG_EVENT_TIME_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' };
+const BIG_EVENT_IMPACT_LABELS = { brief: 'Brief spike (<30 min)', while: 'Took a while (30 min–2 hr)', lingering: 'Lingered for hours / rest of day' };
+const BIG_EVENT_FEELING_LABELS = { crying: 'Crying / tearful', overwhelmed: 'Flooded / overwhelmed', anxious: 'Anxious / panicky', frustrated: 'Angry / frustrated', shutdown: 'Shut down / withdrew', chaos: 'Everything felt too big / chaotic' };
+const BIG_EVENT_TRIGGER_LABELS = { plans: 'Plans changed / blocked', tech: 'Tech / logistics problem', schoolWork: 'School / work pressure', choresClutter: 'Chores / clutter / environment', relationship: 'Relationship / conflict', money: 'Money / spending', health: 'Body / health / pain', unknown: 'Not sure / other' };
 
 function localDateKey(date) {
   const y = date.getFullYear();
@@ -1336,7 +1348,7 @@ function dateFromKey(key) {
   return new Date(y || 2000, (m || 1) - 1, d || 1);
 }
 function trackerDayDefaults() {
-  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], schoolPlanOutcome: null, chorePlanOutcome: null, schoolPlanReason: null, chorePlanReason: null, context: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
+  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], schoolPlanOutcome: null, chorePlanOutcome: null, schoolPlanReason: null, chorePlanReason: null, context: [], bigEvents: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
 }
 function getTrackerDay(key, create = false) {
   app.data.trackerDays = app.data.trackerDays || {};
@@ -1353,7 +1365,12 @@ function normalizedTrackerDay(day) {
     changes: Array.isArray(day?.changes) ? day.changes : [],
     symptoms: Object.assign({}, day?.symptoms || {}),
     functioning: Array.isArray(day?.functioning) ? day.functioning : [],
-    context: Array.isArray(day?.context) ? day.context : []
+    context: Array.isArray(day?.context) ? day.context : [],
+    bigEvents: Array.isArray(day?.bigEvents) ? day.bigEvents.map(event => ({
+      ...event,
+      feelings: Array.isArray(event?.feelings) ? event.feelings : [],
+      triggers: Array.isArray(event?.triggers) ? event.triggers : []
+    })) : []
   });
   // Backward compatibility for v6 days that only had the old overall emotional anchor.
   if (!day?.tone) normalized.tone = day?.moodAnchor === 'harder' ? 'low' : day?.moodAnchor === 'better' ? 'high' : 'typical';
@@ -1361,7 +1378,7 @@ function normalizedTrackerDay(day) {
 }
 function trackerHasMeaningfulData(day) {
   if (!day) return false;
-  return Boolean(day.checkedIn || day.customTouched || day.importedBearable || (day.legacyMoodValues && day.legacyMoodValues.length));
+  return Boolean(day.checkedIn || day.customTouched || day.importedBearable || (Array.isArray(day.bigEvents) && day.bigEvents.length) || (day.legacyMoodValues && day.legacyMoodValues.length));
 }
 function saveTrackerDay(day) {
   day.customTouched = true;
@@ -1437,6 +1454,7 @@ function calculateTrackerMood(day) {
 
   // Context is deliberately not scored: it helps explain patterns without turning a busy/stressful circumstance into “your mood.”
   if (d.context.length) parts.push('outside context tracked separately (not scored)');
+  if (d.bigEvents.length) parts.push(`${d.bigEvents.length} big emotional event${d.bigEvents.length===1?'':'s'} logged separately (not scored)`);
 
   const adj = Math.max(-1, Math.min(1, Number(d.scoreAdjustment) || 0));
   if (adj) { score += adj; parts.push(`manual nudge ${adj > 0 ? '+1' : '−1'}`); }
@@ -1452,6 +1470,106 @@ function moodLabel(score) {
   return 'Exceptionally good / high day';
 }
 function setButtonSelected(button, selected) { if (button) button.classList.toggle('selected', Boolean(selected)); }
+
+function renderBigEventList(day) {
+  const list = document.getElementById('bigEventList');
+  if (!list) return;
+  const events = normalizedTrackerDay(day).bigEvents || [];
+  if (!events.length) {
+    list.innerHTML = '<p class="gentle-note big-event-empty">No big emotional event logged for this day.</p>';
+    return;
+  }
+  list.innerHTML = events.map(event => {
+    const feelings = (event.feelings || []).map(k => BIG_EVENT_FEELING_LABELS[k] || k).join(' · ');
+    const triggers = (event.triggers || []).map(k => BIG_EVENT_TRIGGER_LABELS[k] || k).join(' · ');
+    const meta = [BIG_EVENT_TIME_LABELS[event.timeOfDay], BIG_EVENT_INTENSITY_LABELS[event.intensity], BIG_EVENT_IMPACT_LABELS[event.impact]].filter(Boolean).join(' · ');
+    return `<div class="big-event-item">
+      <div class="big-event-item-main">
+        <div class="big-event-item-title"><span class="big-event-badge">!</span><strong>${escapeHtml(meta || 'Big emotional event')}</strong></div>
+        ${feelings ? `<span>${escapeHtml(feelings)}</span>` : ''}
+        ${triggers ? `<small>Trigger: ${escapeHtml(triggers)}</small>` : ''}
+        ${event.note ? `<p>${escapeHtml(event.note)}</p>` : ''}
+      </div>
+      <div class="big-event-item-actions">
+        <button type="button" class="text-button" data-edit-big-event="${escapeHtml(event.id)}">Edit</button>
+        <button type="button" class="text-button danger-text" data-delete-big-event="${escapeHtml(event.id)}">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function resetBigEventEditor() {
+  const editor = document.getElementById('bigEventEditor');
+  if (!editor) return;
+  document.getElementById('bigEventId').value = '';
+  document.getElementById('bigEventNote').value = '';
+  editor.querySelectorAll('[data-event-value]').forEach(btn => btn.classList.remove('selected'));
+}
+
+function openBigEventEditor(event = null) {
+  const editor = document.getElementById('bigEventEditor');
+  if (!editor) return;
+  resetBigEventEditor();
+  editor.classList.remove('hidden');
+  if (event) {
+    document.getElementById('bigEventId').value = event.id || '';
+    document.getElementById('bigEventNote').value = event.note || '';
+    editor.querySelectorAll('[data-event-choice]').forEach(group => {
+      const key = group.dataset.eventChoice;
+      group.querySelectorAll('[data-event-value]').forEach(btn => btn.classList.toggle('selected', event[key] === btn.dataset.eventValue));
+    });
+    editor.querySelectorAll('[data-event-multi]').forEach(group => {
+      const key = group.dataset.eventMulti;
+      const set = new Set(Array.isArray(event[key]) ? event[key] : []);
+      group.querySelectorAll('[data-event-value]').forEach(btn => btn.classList.toggle('selected', set.has(btn.dataset.eventValue)));
+    });
+  }
+  editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeBigEventEditor() {
+  const editor = document.getElementById('bigEventEditor');
+  if (!editor) return;
+  editor.classList.add('hidden');
+  resetBigEventEditor();
+}
+
+function readBigEventEditor() {
+  const editor = document.getElementById('bigEventEditor');
+  if (!editor) return null;
+  const pickOne = key => editor.querySelector(`[data-event-choice="${key}"] [data-event-value].selected`)?.dataset.eventValue || null;
+  const pickMany = key => [...editor.querySelectorAll(`[data-event-multi="${key}"] [data-event-value].selected`)].map(btn => btn.dataset.eventValue);
+  return {
+    id: document.getElementById('bigEventId').value || uid(),
+    intensity: pickOne('intensity'),
+    timeOfDay: pickOne('timeOfDay'),
+    feelings: pickMany('feelings'),
+    triggers: pickMany('triggers'),
+    impact: pickOne('impact'),
+    note: document.getElementById('bigEventNote').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function saveBigEventEditor() {
+  const event = readBigEventEditor();
+  if (!event) return;
+  if (!event.intensity) {
+    showToast('Choose how intense the event felt.');
+    return;
+  }
+  if (!event.feelings.length && !event.triggers.length && !event.note) {
+    showToast('Add at least one feeling, trigger, or note so the event is useful later.');
+    return;
+  }
+  const day = normalizedTrackerDay(getTrackerDay(app.trackerDate, true));
+  const idx = day.bigEvents.findIndex(item => item.id === event.id);
+  if (idx >= 0) day.bigEvents[idx] = event;
+  else day.bigEvents.push(event);
+  closeBigEventEditor();
+  saveTrackerDay(day);
+  showToast(idx >= 0 ? 'Big event updated.' : 'Big event saved.');
+}
 
 function renderTrackerHome(preserveNotesFocus = true) {
   const dateInput = document.getElementById('trackerDate');
@@ -1497,6 +1615,7 @@ function renderTrackerHome(preserveNotesFocus = true) {
     if (small) small.textContent = level >= 2 ? 'Unusually strong' : level === 1 ? 'Present' : 'Not logged';
     btn.setAttribute('aria-pressed', level ? 'true' : 'false');
   });
+  renderBigEventList(day);
   const notes = document.getElementById('trackerNotes');
   if (notes && (!preserveNotesFocus || document.activeElement !== notes)) notes.value = day.notes || '';
   const expl = document.getElementById('trackerScoreExplanation');
@@ -1514,6 +1633,7 @@ function renderTrackerHome(preserveNotesFocus = true) {
   else if (day.chorePlanOutcome === 'unmet') summary.push('<span class="state-chip">Chore plan unfinished</span>');
   const symptomCount = Object.values(day.symptoms).filter(Boolean).length;
   if (symptomCount) summary.push(`<span class="state-chip">${symptomCount} physical symptom${symptomCount===1?'':'s'}</span>`);
+  if (day.bigEvents.length) summary.push(`<span class="state-chip big-event-chip">! ${day.bigEvents.length} big emotional event${day.bigEvents.length===1?'':'s'}</span>`);
   if (day.importedBearable) summary.push('<span class="state-chip imported-chip">Bearable history</span>');
   document.getElementById('trackerStateSummary').innerHTML = summary.join('') || '<span class="gentle-note">Nothing unusual logged yet. Typical days are useful data too.</span>';
   const checkedButton = document.getElementById('markDayLogged');
@@ -1531,7 +1651,18 @@ function updateTrackerArray(bucket, value) {
 }
 function installTrackerHandlers() {
   const dateInput = document.getElementById('trackerDate');
-  if (dateInput) dateInput.addEventListener('change', () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) return; app.trackerDate = dateInput.value; renderTrackerHome(false); });
+  if (dateInput) dateInput.addEventListener('change', () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) return; closeBigEventEditor(); app.trackerDate = dateInput.value; renderTrackerHome(false); });
+  const addBigEvent=document.getElementById('addBigEvent'); if(addBigEvent)addBigEvent.addEventListener('click',()=>openBigEventEditor());
+  const cancelBigEvent=document.getElementById('cancelBigEvent'); if(cancelBigEvent)cancelBigEvent.addEventListener('click',closeBigEventEditor);
+  const saveBigEvent=document.getElementById('saveBigEvent'); if(saveBigEvent)saveBigEvent.addEventListener('click',saveBigEventEditor);
+  document.querySelectorAll('[data-event-choice]').forEach(group=>group.addEventListener('click',e=>{const btn=e.target.closest('[data-event-value]');if(!btn)return;group.querySelectorAll('[data-event-value]').forEach(x=>x.classList.toggle('selected',x===btn));}));
+  document.querySelectorAll('[data-event-multi]').forEach(group=>group.addEventListener('click',e=>{const btn=e.target.closest('[data-event-value]');if(!btn)return;btn.classList.toggle('selected');}));
+  const bigEventList=document.getElementById('bigEventList'); if(bigEventList)bigEventList.addEventListener('click',e=>{
+    const edit=e.target.closest('[data-edit-big-event]'); const del=e.target.closest('[data-delete-big-event]');
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,false));
+    if(edit){const event=day.bigEvents.find(x=>x.id===edit.dataset.editBigEvent);if(event)openBigEventEditor(event);return;}
+    if(del){const id=del.dataset.deleteBigEvent;if(!window.confirm('Delete this big emotional event?'))return;const target=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));target.bigEvents=target.bigEvents.filter(x=>x.id!==id);saveTrackerDay(target);showToast('Big event deleted.');}
+  });
   const markDay=document.getElementById('markDayLogged'); if(markDay) markDay.addEventListener('click',()=>{const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.checkedIn=true; saveTrackerDay(day);});
   document.querySelectorAll('[data-day-flag]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const k=btn.dataset.dayFlag; day.dayFlags[k]=!day.dayFlags[k]; day.moodCustomTouched=true; saveTrackerDay(day); }));
   document.querySelectorAll('[data-score-adjust]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.scoreAdjustment=Number(btn.dataset.scoreAdjust); day.moodCustomTouched=true; saveTrackerDay(day); }));
@@ -1579,6 +1710,7 @@ function renderCalendar() {
     if(n.motivation==='high')markers.push('M↑'); else if(n.motivation==='low')markers.push('M↓');
     if(n.capacity==='high')markers.push('C↑'); else if(n.capacity==='low')markers.push('C↓');
     if(symptom)markers.push('●');
+    if(n.bigEvents.length)markers.push('!');
     const todayClass=key===localDateKey(new Date())?' today':'';
     cells.push(`<button type="button" class="calendar-day${cls}${todayClass}" data-calendar-date="${key}" aria-label="${key}${mood&&mood.score!=null?`, overall day-state score ${mood.score}`:''}"><span class="calendar-date-num">${d}</span>${mood&&mood.score!=null?`<strong>${mood.score}</strong>`:'<span class="no-score">—</span>'}<small>${markers.join(' ')}</small></button>`);
   }
@@ -1590,7 +1722,8 @@ function renderCalendar() {
     const highMot=monthDays.filter(x=>normalizedTrackerDay(x).motivation==='high').length;
     const lowCap=monthDays.filter(x=>normalizedTrackerDay(x).capacity==='low').length;
     const symptomDays=monthDays.filter(x=>Object.values(normalizedTrackerDay(x).symptoms).some(Boolean)).length;
-    summary.innerHTML=[[monthDays.length,'days logged'],[avg,'average day-state score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days'],[symptomDays,'days with physical symptoms']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
+    const bigEventDays=monthDays.filter(x=>normalizedTrackerDay(x).bigEvents.length).length;
+    summary.innerHTML=[[monthDays.length,'days logged'],[avg,'average day-state score'],[highMot,'high-motivation days'],[lowCap,'low-capacity days'],[symptomDays,'days with physical symptoms'],[bigEventDays,'days with big emotional events']].map(([v,l])=>`<div class="stat-card"><span class="stat-value">${v}</span><span class="stat-label">${l}</span></div>`).join('');
   }
 }
 
@@ -1609,6 +1742,14 @@ function daySignals(day) {
   if (d.chorePlanReason) out.push([`chore-reason-${d.chorePlanReason}`, `Chore plan changed: ${TRACKER_PLAN_REASON_LABELS[d.chorePlanReason]||d.chorePlanReason}`]);
   d.functioning.filter(k=>['homeworkHard','choresHard','schoolAhead','choresExtra','exercise'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
   d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
+  if(d.bigEvents.length){
+    out.push(['big-event-any','Big emotional event']);
+    const intensityRank={big:1,veryBig:2,overwhelming:3};
+    const strongest=[...d.bigEvents].sort((a,b)=>(intensityRank[b.intensity]||0)-(intensityRank[a.intensity]||0))[0];
+    if(strongest?.intensity)out.push([`big-event-intensity-${strongest.intensity}`,`Big event: ${BIG_EVENT_INTENSITY_LABELS[strongest.intensity]||strongest.intensity}`]);
+    [...new Set(d.bigEvents.flatMap(event=>event.triggers||[]))].forEach(k=>out.push([`big-event-trigger-${k}`,`Big event trigger: ${BIG_EVENT_TRIGGER_LABELS[k]||k}`]));
+    [...new Set(d.bigEvents.flatMap(event=>event.feelings||[]))].forEach(k=>out.push([`big-event-feeling-${k}`,`Big event feeling: ${BIG_EVENT_FEELING_LABELS[k]||k}`]));
+  }
   return out;
 }
 function findClusters(dateKeys, qualifies) {
@@ -1643,9 +1784,11 @@ function rhythmAnalysis(days) {
   const downClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.tone==='low')n++; if(d.motivation==='low')n++; if(d.energy==='low')n++; if(d.capacity==='low')n++; if(d.enjoyment==='low')n++; ['down','flat','anxious','irritable','overwhelmed','reactive'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
   const upClusters=findClusters(keys,day=>{const d=normalizedTrackerDay(day); let n=0; if(d.tone==='high')n++; if(d.motivation==='high')n++; if(d.energy==='high')n++; if(d.capacity==='high')n++; if(d.enjoyment==='high')n++; ['content','confident','patient','social','affection','interested'].forEach(k=>{if(d.changes.includes(k))n++;}); return n>=2;});
   const physicalClusters=findClusters(keys,day=>Object.values(normalizedTrackerDay(day).symptoms).some(Boolean));
+  const bigEventClusters=findClusters(keys,day=>normalizedTrackerDay(day).bigEvents.length>0);
   const down=analyzeClusterRhythm(downClusters,'Down-state');
   const up=analyzeClusterRhythm(upClusters,'Up-state');
   const physical=analyzeClusterRhythm(physicalClusters,'Physical-symptom');
+  const bigEvent=analyzeClusterRhythm(bigEventClusters,'Big-event');
   const transitionGaps=[];
   downClusters.forEach(cluster=>{
     const end=cluster.at(-1);
@@ -1659,7 +1802,7 @@ function rhythmAnalysis(days) {
   }else if(transitionGaps.length===1){
     transition={level:'early',label:'Down → up transition',text:`One down-to-up transition has been observed so far (${transitionGaps[0]} day${transitionGaps[0]===1?'':'s'} apart). One example is not enough to call it a pattern.`};
   }else transition={level:'none',label:'Down → up transition',text:'No repeated down-to-up transition has been established yet.'};
-  return {down,up,physical,transition,summaries:[down,up,physical,transition]};
+  return {down,up,physical,bigEvent,transition,summaries:[down,up,physical,bigEvent,transition]};
 }
 function patternPreviewText(){
   const days=Object.entries(app.data.trackerDays||{}).filter(([,d])=>trackerHasMeaningfulData(d)).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -1710,6 +1853,18 @@ function renderTrackerInsights(){
   const highMotDays=days.filter(([,d])=>normalizedTrackerDay(d).motivation==='high' && calculateTrackerMood(d).score!=null);
   if(highMotDays.length>=4){const a=(highMotDays.reduce((sum,[,d])=>sum+Number(calculateTrackerMood(d).score),0)/highMotDays.length).toFixed(1);patterns.push(`<strong>High-motivation days in context.</strong><br>Across ${highMotDays.length} high-motivation days, the average overall day-state score is ${a}/10. Motivation contributes modestly to the score, but it is still analyzed separately so it cannot stand in for mood by itself.`);}
   document.getElementById('patternCards').innerHTML=patterns.map(t=>`<div class="pattern-card">${t}</div>`).join('');
+  const bigEventEl=document.getElementById('bigEventInsights');
+  if(bigEventEl){
+    const events=days.flatMap(([date,day])=>normalizedTrackerDay(day).bigEvents.map(event=>({date,...event}))).sort((a,b)=>b.date.localeCompare(a.date)||String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+    if(!events.length) bigEventEl.innerHTML='<p class="gentle-note">No big emotional events logged yet. That is different from having no difficult emotions — this section is only for the unusually intense spikes you specifically flag.</p>';
+    else bigEventEl.innerHTML=`<div class="big-event-review-summary"><strong>${events.length} big event${events.length===1?'':'s'} across ${new Set(events.map(e=>e.date)).size} day${new Set(events.map(e=>e.date)).size===1?'':'s'}</strong><span>These stay visible even when the day-state score itself was typical.</span></div>`+events.slice(0,8).map(event=>{
+      const feelings=(event.feelings||[]).map(k=>BIG_EVENT_FEELING_LABELS[k]||k).join(' · ');
+      const triggers=(event.triggers||[]).map(k=>BIG_EVENT_TRIGGER_LABELS[k]||k).join(' · ');
+      const meta=[BIG_EVENT_TIME_LABELS[event.timeOfDay],BIG_EVENT_INTENSITY_LABELS[event.intensity],BIG_EVENT_IMPACT_LABELS[event.impact]].filter(Boolean).join(' · ');
+      const dayScore=calculateTrackerMood(getTrackerDay(event.date,false)).score;
+      return `<div class="big-event-review-item"><div><strong>${escapeHtml(formatShortDate(dateFromKey(event.date)))}${dayScore!=null?` · day ${dayScore}/10`:''}</strong><span>${escapeHtml(meta||'Big emotional event')}</span></div>${feelings?`<small>${escapeHtml(feelings)}</small>`:''}${triggers?`<small>Trigger: ${escapeHtml(triggers)}</small>`:''}${event.note?`<p>${escapeHtml(event.note)}</p>`:''}</div>`;
+    }).join('');
+  }
   const entries=app.data.entries||[]; const discoveries=entries.filter(e=>e.type==='discovery');
   document.getElementById('discoverySummary').innerHTML=entries.length?`<div class="discovery-mini"><strong>${entries.length} guided reflection${entries.length===1?'':'s'}</strong><span>${discoveries.length ? `${discoveries.length} are explicit self-discoveries. ` : ''}These stay separate from the daily tracker but can add context when you review a pattern with your counselor.</span></div>`:'<p class="gentle-note">No guided reflections saved yet. Use them only when they are useful; daily tracking is now the main part of Inner Compass.</p>';
 }
