@@ -102,3 +102,11 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Big-event days are marked on the calendar with **!** and included in monthly summaries.
 - Added a counselor-review section on Patterns that keeps recent big events visible alongside the overall day score.
 - Big events, their triggers, and their emotional features can participate in association analysis, and repeated event clusters can be watched cautiously for rhythm without assuming a cycle phase.
+
+
+## Version 10 additions
+- Retired active school-plan tracking now that school is ending; historical school data is preserved for old-day review but no longer participates in new pattern associations.
+- Replaced the school card with **Personal time** signals: followed what I actually wanted to do, intentional rest/downtime, leisure/hobbies hard to start, and getting stuck scrolling/zoning out.
+- Personal-time signals are behavior/context clues only; they do not automatically raise or lower the overall day-state score.
+- Clarified **Motivation** as desire/drive regardless of output, and **Capacity** as how manageable demands felt before strain—not simply whether tasks were completed.
+- Renamed the big-event trigger from school/work pressure to **Work / responsibility pressure** while keeping historical event data compatible.

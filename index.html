@@ -82,7 +82,7 @@
                   </div>
                 </div>
                 <div class="core-state-row">
-                  <div class="core-state-copy"><strong>Motivation</strong><small>How much drive you had to start or do things.</small></div>
+                  <div class="core-state-copy"><strong>Motivation</strong><small>How much drive / desire you had to start things, regardless of what you actually got done.</small></div>
                   <div class="state-choice" data-choice-group="motivation">
                     <button type="button" data-choice-value="low">↓ Low</button>
                     <button type="button" data-choice-value="typical">Typical</button>
@@ -98,7 +98,7 @@
                   </div>
                 </div>
                 <div class="core-state-row">
-                  <div class="core-state-copy"><strong>Capacity</strong><small>How much mental and emotional bandwidth you had to handle demands.</small></div>
+                  <div class="core-state-copy"><strong>Capacity</strong><small>How manageable demands felt before strain — not simply whether you managed to get things done.</small></div>
                   <div class="state-choice" data-choice-group="capacity">
                     <button type="button" data-choice-value="low">↓ Lower</button>
                     <button type="button" data-choice-value="typical">Typical</button>
@@ -181,7 +181,7 @@
                   <div class="event-multi-grid" data-event-multi="triggers">
                     <button type="button" data-event-value="plans">Plans changed / blocked</button>
                     <button type="button" data-event-value="tech">Tech / logistics problem</button>
-                    <button type="button" data-event-value="schoolWork">School / work pressure</button>
+                    <button type="button" data-event-value="schoolWork">Work / responsibility pressure</button>
                     <button type="button" data-event-value="choresClutter">Chores / clutter / environment</button>
                     <button type="button" data-event-value="relationship">Relationship / conflict</button>
                     <button type="button" data-event-value="money">Money / spending</button>
@@ -243,30 +243,17 @@
             </article>
 
             <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Follow-through</p><h3>Plans, effort & context</h3></div></div>
-              <p class="function-definition"><strong>Met the plan</strong> means you completed what you intentionally decided counted for that day — including a revised plan. If a lesson is split across days, log the podcast on the day you planned to listen and the quiz on the day you planned to take it.</p>
+              <div class="panel-heading"><div><p class="eyebrow">Daily life</p><h3>Follow-through, recovery & context</h3></div></div>
+              <p class="function-definition"><strong>Chore plan:</strong> use the final intentional plan for the day, including a reasonable revised plan. <strong>Personal time:</strong> log what actually happened without treating rest or fun as something you had to earn. These behavior signals are used for patterns; they do not automatically make the day score better or worse.</p>
 
               <div class="plan-grid">
-                <section class="plan-card" data-plan-domain="school">
-                  <div class="plan-card-heading"><div><span class="field-label">School</span><small>How did the day’s plan land?</small></div></div>
-                  <div class="plan-outcome-grid" data-plan-outcome-group="schoolPlanOutcome">
-                    <button type="button" data-plan-outcome="none">No school planned</button>
-                    <button type="button" data-plan-outcome="met">Met today’s plan</button>
-                    <button type="button" data-plan-outcome="revisedMet">Met a reduced / rescheduled plan</button>
-                    <button type="button" data-plan-outcome="unmet">Left planned work unfinished</button>
-                  </div>
-                  <div class="plan-reason hidden" data-plan-reason-wrap="school">
-                    <span>Why did the plan change?</span>
-                    <div class="mini-choice-row" data-plan-reason-group="schoolPlanReason">
-                      <button type="button" data-plan-reason="logistics">Logistics / schedule</button>
-                      <button type="button" data-plan-reason="capacity">My motivation / energy / capacity</button>
-                      <button type="button" data-plan-reason="both">Both</button>
-                      <button type="button" data-plan-reason="other">Other</button>
-                    </div>
-                  </div>
-                  <div class="plan-extra-row">
-                    <button type="button" data-track-toggle="functioning" data-value="schoolAhead">Worked ahead</button>
-                    <button type="button" data-track-toggle="functioning" data-value="homeworkHard">Hard to initiate</button>
+                <section class="plan-card personal-time-card">
+                  <div class="plan-card-heading"><div><span class="field-label">Personal time</span><small>What happened when you had room to choose?</small></div></div>
+                  <div class="plan-extra-row recovery-grid">
+                    <button type="button" data-track-toggle="functioning" data-value="followedWants">Followed what I actually wanted to do</button>
+                    <button type="button" data-track-toggle="functioning" data-value="intentionalRest">Had intentional rest / downtime</button>
+                    <button type="button" data-track-toggle="functioning" data-value="leisureHard">Leisure / hobbies were hard to start</button>
+                    <button type="button" data-track-toggle="functioning" data-value="passiveStuck">Got stuck scrolling / zoning out instead</button>
                   </div>
                 </section>
 

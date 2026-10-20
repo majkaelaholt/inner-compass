@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 9;
+const APP_VERSION = 10;
 
 const emotionSupport = {
   Frustration: {
@@ -502,6 +502,9 @@ function loadData() {
         if (!Array.isArray(day.bigEvents)) day.bigEvents = [];
       });
     }
+    // v10 retires active school tracking and adds personal-time/recovery signals.
+    // Historical school data stays intact for old-day review; no migration is needed because
+    // the new personal-time signals live in the existing functioning array.
     return {
       version: APP_VERSION,
       entries: Array.isArray(parsed.entries) ? parsed.entries : [],
@@ -1326,7 +1329,7 @@ const TRACKER_CHANGE_LABELS = {
   affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
   legacySensitive: 'Emotionally sensitive (Bearable)'
 };
-const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate', choresHard: 'Chores hard to initiate' };
+const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork (retired)', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate (retired)', choresHard: 'Chores hard to initiate', followedWants: 'Followed what I actually wanted to do', intentionalRest: 'Had intentional rest / downtime', leisureHard: 'Leisure / hobbies hard to start', passiveStuck: 'Got stuck scrolling / zoning out' };
 const TRACKER_PLAN_LABELS = { none: 'No plan', met: 'Met plan', revisedMet: 'Met revised plan', unmet: 'Left plan unfinished' };
 const TRACKER_PLAN_REASON_LABELS = { logistics: 'Logistics / schedule', capacity: 'Motivation / energy / capacity', both: 'Both logistics and capacity', other: 'Other reason' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
@@ -1335,7 +1338,7 @@ const BIG_EVENT_INTENSITY_LABELS = { big: 'Big', veryBig: 'Very big', overwhelmi
 const BIG_EVENT_TIME_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' };
 const BIG_EVENT_IMPACT_LABELS = { brief: 'Brief spike (<30 min)', while: 'Took a while (30 min–2 hr)', lingering: 'Lingered for hours / rest of day' };
 const BIG_EVENT_FEELING_LABELS = { crying: 'Crying / tearful', overwhelmed: 'Flooded / overwhelmed', anxious: 'Anxious / panicky', frustrated: 'Angry / frustrated', shutdown: 'Shut down / withdrew', chaos: 'Everything felt too big / chaotic' };
-const BIG_EVENT_TRIGGER_LABELS = { plans: 'Plans changed / blocked', tech: 'Tech / logistics problem', schoolWork: 'School / work pressure', choresClutter: 'Chores / clutter / environment', relationship: 'Relationship / conflict', money: 'Money / spending', health: 'Body / health / pain', unknown: 'Not sure / other' };
+const BIG_EVENT_TRIGGER_LABELS = { plans: 'Plans changed / blocked', tech: 'Tech / logistics problem', schoolWork: 'Work / responsibility pressure', choresClutter: 'Chores / clutter / environment', relationship: 'Relationship / conflict', money: 'Money / spending', health: 'Body / health / pain', unknown: 'Not sure / other' };
 
 function localDateKey(date) {
   const y = date.getFullYear();
@@ -1736,11 +1739,9 @@ function daySignals(day) {
   if(d.enjoyment==='high')out.push(['enjoyment-high','More enjoyment / spark']); if(d.enjoyment==='low')out.push(['enjoyment-low','Less enjoyment / spark']);
   d.changes.forEach(k=>out.push([`change-${k}`,TRACKER_CHANGE_LABELS[k]||k]));
   Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
-  if (d.schoolPlanOutcome && d.schoolPlanOutcome !== 'none') out.push([`school-plan-${d.schoolPlanOutcome}`, `School: ${TRACKER_PLAN_LABELS[d.schoolPlanOutcome]||d.schoolPlanOutcome}`]);
   if (d.chorePlanOutcome && d.chorePlanOutcome !== 'none') out.push([`chore-plan-${d.chorePlanOutcome}`, `Chores: ${TRACKER_PLAN_LABELS[d.chorePlanOutcome]||d.chorePlanOutcome}`]);
-  if (d.schoolPlanReason) out.push([`school-reason-${d.schoolPlanReason}`, `School plan changed: ${TRACKER_PLAN_REASON_LABELS[d.schoolPlanReason]||d.schoolPlanReason}`]);
   if (d.chorePlanReason) out.push([`chore-reason-${d.chorePlanReason}`, `Chore plan changed: ${TRACKER_PLAN_REASON_LABELS[d.chorePlanReason]||d.chorePlanReason}`]);
-  d.functioning.filter(k=>['homeworkHard','choresHard','schoolAhead','choresExtra','exercise'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  d.functioning.filter(k=>['choresHard','choresExtra','exercise','followedWants','intentionalRest','leisureHard','passiveStuck'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
   d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
   if(d.bigEvents.length){
     out.push(['big-event-any','Big emotional event']);
