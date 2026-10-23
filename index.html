@@ -244,17 +244,22 @@
 
             <article class="panel">
               <div class="panel-heading"><div><p class="eyebrow">Daily life</p><h3>Follow-through, recovery & context</h3></div></div>
-              <p class="function-definition"><strong>Chore plan:</strong> use the final intentional plan for the day, including a reasonable revised plan. <strong>Personal time:</strong> log what actually happened without treating rest or fun as something you had to earn. These behavior signals are used for patterns; they do not automatically make the day score better or worse.</p>
+              <p class="function-definition"><strong>Chore plan:</strong> use the final intentional plan for the day, including a reasonable revised plan. <strong>Your own time:</strong> only count discretionary time that you personally consider yours. Shared/hanging-out time does not need to count unless it felt like your own choice. These behavior signals are for patterns; they do not automatically make the day score better or worse.</p>
 
               <div class="plan-grid">
                 <section class="plan-card personal-time-card">
-                  <div class="plan-card-heading"><div><span class="field-label">Personal time</span><small>What happened when you had room to choose?</small></div></div>
-                  <div class="plan-extra-row recovery-grid">
-                    <button type="button" data-track-toggle="functioning" data-value="followedWants">Followed what I actually wanted to do</button>
-                    <button type="button" data-track-toggle="functioning" data-value="intentionalRest">Had intentional rest / downtime</button>
-                    <button type="button" data-track-toggle="functioning" data-value="leisureHard">Leisure / hobbies were hard to start</button>
-                    <button type="button" data-track-toggle="functioning" data-value="passiveStuck">Got stuck scrolling / zoning out instead</button>
+                  <div class="plan-card-heading"><div><span class="field-label">Your own time</span><small>What happened during any usable free-time window? Choose everything that fits; leave blank if nothing stood out.</small></div></div>
+                  <div class="plan-extra-row recovery-grid own-time-grid">
+                    <button type="button" data-own-time="didWanted">Got to do something I wanted</button>
+                    <button type="button" data-own-time="intentionalRest">Chose intentional rest</button>
+                    <button type="button" data-own-time="shortWindow">Window felt too short / awkward</button>
+                    <button type="button" data-own-time="blocked">Plan got blocked / interrupted</button>
+                    <button type="button" data-own-time="responsibilities">Responsibilities used the window</button>
+                    <button type="button" data-own-time="hardStart">Had time, but choosing / starting was hard</button>
+                    <button type="button" data-own-time="drifted">Drifted into scrolling / zoning out</button>
+                    <button type="button" data-own-time="noWindow">No meaningful own-time window</button>
                   </div>
+                  <p class="own-time-example">Example: “Crochet didn’t fit the hour I had, Amazon reviews got blocked by tech issues, then I did chores” = short/awkward window + blocked/interrupted + responsibilities used the window.</p>
                 </section>
 
                 <section class="plan-card" data-plan-domain="chores">
@@ -301,7 +306,7 @@
               <details class="tracker-notes-details">
                 <summary>Anything worth remembering? <span>optional note</span></summary>
                 <label class="tracker-notes-label">
-                  <textarea id="trackerNotes" rows="3" placeholder="What happened, what you noticed, or why today felt different…"></textarea>
+                  <textarea id="trackerNotes" rows="3" autocapitalize="sentences" autocorrect="on" spellcheck="true" placeholder="What happened, what you noticed, or why today felt different…"></textarea>
                 </label>
               </details>
             </article>

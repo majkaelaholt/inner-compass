@@ -646,3 +646,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 380px) {
   .event-choice-row, .event-choice-row[data-event-choice="timeOfDay"], .event-choice-row[data-event-choice="impact"], .event-multi-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Version 11: neutral own-time context + stable note editing */
+.own-time-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.own-time-example { margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+@media (max-width: 760px) {
+  .own-time-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .own-time-grid button { min-height: 44px; }
+}
+@media (max-width: 360px) {
+  .own-time-grid { grid-template-columns: 1fr; }
+}

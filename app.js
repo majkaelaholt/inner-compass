@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 
 const emotionSupport = {
   Frustration: {
@@ -502,9 +502,9 @@ function loadData() {
         if (!Array.isArray(day.bigEvents)) day.bigEvents = [];
       });
     }
-    // v10 retires active school tracking and adds personal-time/recovery signals.
-    // Historical school data stays intact for old-day review; no migration is needed because
-    // the new personal-time signals live in the existing functioning array.
+    // v10 retired active school tracking and added an early personal-time experiment.
+    // v11 replaces that experiment with neutral own-time context signals. Historical v10
+    // signals remain in old records but are not reinterpreted or used as new own-time data.
     return {
       version: APP_VERSION,
       entries: Array.isArray(parsed.entries) ? parsed.entries : [],
@@ -1329,7 +1329,7 @@ const TRACKER_CHANGE_LABELS = {
   affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
   legacySensitive: 'Emotionally sensitive (Bearable)'
 };
-const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork (retired)', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate (retired)', choresHard: 'Chores hard to initiate', followedWants: 'Followed what I actually wanted to do', intentionalRest: 'Had intentional rest / downtime', leisureHard: 'Leisure / hobbies hard to start', passiveStuck: 'Got stuck scrolling / zoning out' };
+const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork (retired)', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate (retired)', choresHard: 'Chores hard to initiate', followedWants: 'Followed what I actually wanted to do (v10 retired)', intentionalRest: 'Had intentional rest / downtime (v10 retired)', leisureHard: 'Leisure / hobbies hard to start (v10 retired)', passiveStuck: 'Got stuck scrolling / zoning out (v10 retired)', ownTimeDidWanted: 'Own time: got to do something I wanted', ownTimeRest: 'Own time: chose intentional rest', ownTimeShort: 'Own time: window felt too short / awkward', ownTimeBlocked: 'Own time: plan got blocked / interrupted', ownTimeResponsibilities: 'Own time: responsibilities used the window', ownTimeHardStart: 'Own time: choosing / starting was hard', ownTimeDrifted: 'Own time: drifted into scrolling / zoning out', ownTimeNoWindow: 'No meaningful own-time window' };
 const TRACKER_PLAN_LABELS = { none: 'No plan', met: 'Met plan', revisedMet: 'Met revised plan', unmet: 'Left plan unfinished' };
 const TRACKER_PLAN_REASON_LABELS = { logistics: 'Logistics / schedule', capacity: 'Motivation / energy / capacity', both: 'Both logistics and capacity', other: 'Other reason' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
@@ -1610,6 +1610,8 @@ function renderTrackerHome(preserveNotesFocus = true) {
     const bucket = btn.dataset.trackToggle;
     setButtonSelected(btn, Array.isArray(day[bucket]) && day[bucket].includes(btn.dataset.value));
   });
+  const ownTimeKeyMap = { didWanted:'ownTimeDidWanted', intentionalRest:'ownTimeRest', shortWindow:'ownTimeShort', blocked:'ownTimeBlocked', responsibilities:'ownTimeResponsibilities', hardStart:'ownTimeHardStart', drifted:'ownTimeDrifted', noWindow:'ownTimeNoWindow' };
+  document.querySelectorAll('[data-own-time]').forEach(btn => setButtonSelected(btn, day.functioning.includes(ownTimeKeyMap[btn.dataset.ownTime])));
   document.querySelectorAll('[data-symptom]').forEach(btn => {
     const level = Number(day.symptoms[btn.dataset.symptom] || 0);
     btn.classList.toggle('present', level === 1);
@@ -1685,9 +1687,46 @@ function installTrackerHandlers() {
     saveTrackerDay(day);
   }));
   document.querySelectorAll('[data-track-toggle]').forEach(btn => btn.addEventListener('click', () => updateTrackerArray(btn.dataset.trackToggle, btn.dataset.value)));
+  const ownTimeKeyMap = { didWanted:'ownTimeDidWanted', intentionalRest:'ownTimeRest', shortWindow:'ownTimeShort', blocked:'ownTimeBlocked', responsibilities:'ownTimeResponsibilities', hardStart:'ownTimeHardStart', drifted:'ownTimeDrifted', noWindow:'ownTimeNoWindow' };
+  document.querySelectorAll('[data-own-time]').forEach(btn => btn.addEventListener('click', () => {
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
+    const key=ownTimeKeyMap[btn.dataset.ownTime];
+    const ownKeys=new Set(Object.values(ownTimeKeyMap));
+    const set=new Set(day.functioning);
+    if (set.has(key)) set.delete(key);
+    else {
+      if (key==='ownTimeNoWindow') ownKeys.forEach(k=>set.delete(k));
+      else set.delete('ownTimeNoWindow');
+      set.add(key);
+    }
+    day.functioning=[...set];
+    saveTrackerDay(day);
+  }));
   document.querySelectorAll('[data-symptom]').forEach(btn => btn.addEventListener('click', () => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); const key=btn.dataset.symptom; const current=Number(day.symptoms[key]||0); day.symptoms[key]=current>=2?0:current+1; if (!day.symptoms[key]) delete day.symptoms[key]; saveTrackerDay(day); }));
   const notes=document.getElementById('trackerNotes');
-  if (notes) notes.addEventListener('input', () => { clearTimeout(notes._saveTimer); notes._saveTimer=setTimeout(() => { const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true)); day.notes=notes.value.trim(); saveTrackerDay(day); }, 350); });
+  if (notes) {
+    const persistNotes = (refresh = false) => {
+      clearTimeout(notes._saveTimer);
+      const raw = getTrackerDay(app.trackerDate,true);
+      raw.notes = notes.value;
+      raw.customTouched = true;
+      raw.checkedIn = true;
+      raw.updatedAt = new Date().toISOString();
+      app.data.trackerDays[app.trackerDate] = raw;
+      saveData();
+      const status=document.getElementById('trackerSaveStatus');
+      if(status){status.textContent='Saved just now';clearTimeout(persistNotes.statusTimer);persistNotes.statusTimer=setTimeout(()=>{if(status)status.textContent='Saved';},1500);}
+      if(refresh){renderCalendar();renderTrackerInsights();renderTrackerHome(true);}
+    };
+    notes.addEventListener('input', () => {
+      const raw=getTrackerDay(app.trackerDate,true);
+      raw.notes=notes.value; raw.customTouched=true; raw.checkedIn=true; raw.updatedAt=new Date().toISOString();
+      app.data.trackerDays[app.trackerDate]=raw;
+      clearTimeout(notes._saveTimer);
+      notes._saveTimer=setTimeout(()=>persistNotes(false),350);
+    });
+    notes.addEventListener('blur', () => persistNotes(true));
+  }
   const prev=document.getElementById('calendarPrev'), next=document.getElementById('calendarNext'), today=document.getElementById('calendarToday');
   if (prev) prev.addEventListener('click',()=>{app.calendarCursor=new Date(app.calendarCursor.getFullYear(),app.calendarCursor.getMonth()-1,1);renderCalendar();});
   if (next) next.addEventListener('click',()=>{app.calendarCursor=new Date(app.calendarCursor.getFullYear(),app.calendarCursor.getMonth()+1,1);renderCalendar();});
@@ -1741,7 +1780,7 @@ function daySignals(day) {
   Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
   if (d.chorePlanOutcome && d.chorePlanOutcome !== 'none') out.push([`chore-plan-${d.chorePlanOutcome}`, `Chores: ${TRACKER_PLAN_LABELS[d.chorePlanOutcome]||d.chorePlanOutcome}`]);
   if (d.chorePlanReason) out.push([`chore-reason-${d.chorePlanReason}`, `Chore plan changed: ${TRACKER_PLAN_REASON_LABELS[d.chorePlanReason]||d.chorePlanReason}`]);
-  d.functioning.filter(k=>['choresHard','choresExtra','exercise','followedWants','intentionalRest','leisureHard','passiveStuck'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  d.functioning.filter(k=>['choresHard','choresExtra','exercise','ownTimeDidWanted','ownTimeRest','ownTimeShort','ownTimeBlocked','ownTimeResponsibilities','ownTimeHardStart','ownTimeDrifted','ownTimeNoWindow'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
   d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
   if(d.bigEvents.length){
     out.push(['big-event-any','Big emotional event']);
