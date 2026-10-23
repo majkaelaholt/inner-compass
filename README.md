@@ -110,3 +110,10 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Personal-time signals are behavior/context clues only; they do not automatically raise or lower the overall day-state score.
 - Clarified **Motivation** as desire/drive regardless of output, and **Capacity** as how manageable demands felt before strain—not simply whether tasks were completed.
 - Renamed the big-event trigger from school/work pressure to **Work / responsibility pressure** while keeping historical event data compatible.
+
+
+### v12 — standout-only chore tracking
+- Retired active “met today’s chore plan / revised plan / unfinished” tracking because the chore app already owns completion, skips, grace windows, and rescheduling.
+- Inner Compass now records only unusual chore experiences: extra/got ahead, cleaning roll, hard to initiate, unusually draining, and put off/skipped more than usual.
+- “Put off / skipped more than usual” can optionally record whether the main reason was bandwidth, logistics/timing, simply choosing not to, or mixed/other.
+- Historical plan-based chore data remains in old records but is no longer used as a current pattern signal.

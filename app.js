@@ -1,7 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'inner-compass-data-v1';
-const APP_VERSION = 11;
+const APP_VERSION = 12;
 
 const emotionSupport = {
   Frustration: {
@@ -505,6 +505,14 @@ function loadData() {
     // v10 retired active school tracking and added an early personal-time experiment.
     // v11 replaces that experiment with neutral own-time context signals. Historical v10
     // signals remain in old records but are not reinterpreted or used as new own-time data.
+    // v12 retires chore plan completion as an active signal. The chore app already owns
+    // completion/rescheduling; Inner Compass now tracks only standout chore experiences.
+    if (Number(parsed.version || 0) < 12) {
+      Object.values(trackerDays).forEach(day => {
+        if (!day || typeof day !== 'object') return;
+        if (!('choreDeferralReason' in day)) day.choreDeferralReason = null;
+      });
+    }
     return {
       version: APP_VERSION,
       entries: Array.isArray(parsed.entries) ? parsed.entries : [],
@@ -1329,9 +1337,10 @@ const TRACKER_CHANGE_LABELS = {
   affection: 'Wanted more affection / attention', interested: 'More interested in hobbies / projects',
   legacySensitive: 'Emotionally sensitive (Bearable)'
 };
-const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork (retired)', choresExtra: 'Did extra chores', homeworkHard: 'Schoolwork hard to initiate (retired)', choresHard: 'Chores hard to initiate', followedWants: 'Followed what I actually wanted to do (v10 retired)', intentionalRest: 'Had intentional rest / downtime (v10 retired)', leisureHard: 'Leisure / hobbies hard to start (v10 retired)', passiveStuck: 'Got stuck scrolling / zoning out (v10 retired)', ownTimeDidWanted: 'Own time: got to do something I wanted', ownTimeRest: 'Own time: chose intentional rest', ownTimeShort: 'Own time: window felt too short / awkward', ownTimeBlocked: 'Own time: plan got blocked / interrupted', ownTimeResponsibilities: 'Own time: responsibilities used the window', ownTimeHardStart: 'Own time: choosing / starting was hard', ownTimeDrifted: 'Own time: drifted into scrolling / zoning out', ownTimeNoWindow: 'No meaningful own-time window' };
+const TRACKER_FUNCTION_LABELS = { legacyHomework: 'Did homework (Bearable legacy)', legacyChores: 'Did chores (Bearable legacy)', exercise: 'Exercised', schoolAhead: 'Worked ahead on schoolwork (retired)', choresExtra: 'Chores: did extra / got ahead', choresRoll: 'Chores: got on a cleaning roll', choresHard: 'Chores: hard to initiate', choresDraining: 'Chores: felt unusually draining', choresDeferredMore: 'Chores: put off / skipped more than usual', homeworkHard: 'Schoolwork hard to initiate (retired)', followedWants: 'Followed what I actually wanted to do (v10 retired)', intentionalRest: 'Had intentional rest / downtime (v10 retired)', leisureHard: 'Leisure / hobbies hard to start (v10 retired)', passiveStuck: 'Got stuck scrolling / zoning out (v10 retired)', ownTimeDidWanted: 'Own time: got to do something I wanted', ownTimeRest: 'Own time: chose intentional rest', ownTimeShort: 'Own time: window felt too short / awkward', ownTimeBlocked: 'Own time: plan got blocked / interrupted', ownTimeResponsibilities: 'Own time: responsibilities used the window', ownTimeHardStart: 'Own time: choosing / starting was hard', ownTimeDrifted: 'Own time: drifted into scrolling / zoning out', ownTimeNoWindow: 'No meaningful own-time window' };
 const TRACKER_PLAN_LABELS = { none: 'No plan', met: 'Met plan', revisedMet: 'Met revised plan', unmet: 'Left plan unfinished' };
 const TRACKER_PLAN_REASON_LABELS = { logistics: 'Logistics / schedule', capacity: 'Motivation / energy / capacity', both: 'Both logistics and capacity', other: 'Other reason' };
+const CHORE_DEFERRAL_REASON_LABELS = { bandwidth: 'Didn’t have the bandwidth', logistics: 'Logistics / timing', choice: 'Simply chose not to', mixed: 'Mixed / other' };
 const TRACKER_CONTEXT_LABELS = { poorSleep: 'Poor sleep', highStress: 'High outside stress', busy: 'Unusually busy', sick: 'Sick / unwell' };
 const TRACKER_SYMPTOM_LABELS = { cramping: 'Cramping', bloating: 'Bloating', headache: 'Headache', breastTenderness: 'Breast tenderness', indigestion: 'GI / indigestion', bodyAches: 'Body aches' };
 const BIG_EVENT_INTENSITY_LABELS = { big: 'Big', veryBig: 'Very big', overwhelming: 'Overwhelming' };
@@ -1351,7 +1360,7 @@ function dateFromKey(key) {
   return new Date(y || 2000, (m || 1) - 1, d || 1);
 }
 function trackerDayDefaults() {
-  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], schoolPlanOutcome: null, chorePlanOutcome: null, schoolPlanReason: null, chorePlanReason: null, context: [], bigEvents: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
+  return { moodAnchor: null, moodCustomTouched: false, tone: 'typical', motivation: 'typical', energy: 'typical', capacity: 'typical', enjoyment: 'typical', dayFlags: {}, scoreAdjustment: 0, changes: [], symptoms: {}, functioning: [], schoolPlanOutcome: null, chorePlanOutcome: null, schoolPlanReason: null, chorePlanReason: null, choreDeferralReason: null, context: [], bigEvents: [], notes: '', customTouched: false, checkedIn: false, updatedAt: null };
 }
 function getTrackerDay(key, create = false) {
   app.data.trackerDays = app.data.trackerDays || {};
@@ -1439,14 +1448,12 @@ function calculateTrackerMood(day) {
   if (d.dayFlags.emotionsInterfered) { score -= 0.50; parts.push('emotions interfered with responsibilities'); }
 
   let functionDrag = 0;
-  if (d.functioning.includes('homeworkHard')) functionDrag -= 0.22;
   if (d.functioning.includes('choresHard')) functionDrag -= 0.22;
-  if (d.schoolPlanOutcome === 'unmet') functionDrag -= 0.18;
-  if (d.chorePlanOutcome === 'unmet') functionDrag -= 0.18;
-  score += Math.max(-0.65, functionDrag);
-  if (d.functioning.includes('homeworkHard') || d.functioning.includes('choresHard')) parts.push('starting responsibilities was unusually hard');
-  if (d.schoolPlanOutcome === 'unmet' || d.chorePlanOutcome === 'unmet') parts.push('some planned responsibilities stayed unfinished');
-  if (d.schoolPlanOutcome === 'revisedMet' || d.chorePlanOutcome === 'revisedMet') parts.push('a revised plan was still met');
+  if (d.functioning.includes('choresDraining')) functionDrag -= 0.18;
+  score += Math.max(-0.50, functionDrag);
+  if (d.functioning.includes('choresHard')) parts.push('starting chores was unusually hard');
+  if (d.functioning.includes('choresDraining')) parts.push('chores took unusually more out of you');
+  if (d.functioning.includes('choresExtra') || d.functioning.includes('choresRoll') || d.functioning.includes('choresDeferredMore')) parts.push('standout chore behavior tracked separately');
 
   // Physical discomfort matters to how a day feels, but is intentionally capped so cramps/headaches cannot define the whole day.
   let symptomDrag = 0;
@@ -1606,6 +1613,9 @@ function renderTrackerHome(preserveNotesFocus = true) {
     const outcome = domain === 'school' ? day.schoolPlanOutcome : day.chorePlanOutcome;
     wrap.classList.toggle('hidden', !(outcome === 'revisedMet' || outcome === 'unmet'));
   });
+  const choreReasonWrap = document.getElementById('choreDeferralReasonWrap');
+  if (choreReasonWrap) choreReasonWrap.classList.toggle('hidden', !day.functioning.includes('choresDeferredMore'));
+  document.querySelectorAll('[data-chore-deferral-reason]').forEach(btn => setButtonSelected(btn, day.choreDeferralReason === btn.dataset.choreDeferralReason));
   document.querySelectorAll('[data-track-toggle]').forEach(btn => {
     const bucket = btn.dataset.trackToggle;
     setButtonSelected(btn, Array.isArray(day[bucket]) && day[bucket].includes(btn.dataset.value));
@@ -1634,8 +1644,10 @@ function renderTrackerHome(preserveNotesFocus = true) {
   day.changes.slice(0,5).forEach(x => summary.push(`<span class="state-chip">${escapeHtml(TRACKER_CHANGE_LABELS[x] || x)}</span>`));
   if (day.schoolPlanOutcome === 'revisedMet') summary.push('<span class="state-chip">School plan revised ✓</span>');
   else if (day.schoolPlanOutcome === 'unmet') summary.push('<span class="state-chip">School plan unfinished</span>');
-  if (day.chorePlanOutcome === 'revisedMet') summary.push('<span class="state-chip">Chore plan revised ✓</span>');
-  else if (day.chorePlanOutcome === 'unmet') summary.push('<span class="state-chip">Chore plan unfinished</span>');
+  if (day.functioning.includes('choresRoll')) summary.push('<span class="state-chip">Cleaning roll</span>');
+  if (day.functioning.includes('choresDeferredMore')) summary.push('<span class="state-chip">More chores deferred</span>');
+  if (day.functioning.includes('choresHard')) summary.push('<span class="state-chip">Chores hard to start</span>');
+  if (day.functioning.includes('choresDraining')) summary.push('<span class="state-chip">Chores unusually draining</span>');
   const symptomCount = Object.values(day.symptoms).filter(Boolean).length;
   if (symptomCount) summary.push(`<span class="state-chip">${symptomCount} physical symptom${symptomCount===1?'':'s'}</span>`);
   if (day.bigEvents.length) summary.push(`<span class="state-chip big-event-chip">! ${day.bigEvents.length} big emotional event${day.bigEvents.length===1?'':'s'}</span>`);
@@ -1686,7 +1698,21 @@ function installTrackerHandlers() {
     day[group]=day[group]===btn.dataset.planReason?null:btn.dataset.planReason;
     saveTrackerDay(day);
   }));
-  document.querySelectorAll('[data-track-toggle]').forEach(btn => btn.addEventListener('click', () => updateTrackerArray(btn.dataset.trackToggle, btn.dataset.value)));
+  document.querySelectorAll('[data-track-toggle]').forEach(btn => btn.addEventListener('click', () => {
+    const bucket=btn.dataset.trackToggle, value=btn.dataset.value;
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
+    const set=new Set(day[bucket]||[]);
+    set.has(value)?set.delete(value):set.add(value);
+    day[bucket]=[...set];
+    if (bucket==='functioning' && value==='choresDeferredMore' && !set.has(value)) day.choreDeferralReason=null;
+    saveTrackerDay(day);
+  }));
+  document.querySelectorAll('[data-chore-deferral-reason]').forEach(btn => btn.addEventListener('click', () => {
+    const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
+    day.choreDeferralReason = day.choreDeferralReason===btn.dataset.choreDeferralReason ? null : btn.dataset.choreDeferralReason;
+    if (!day.functioning.includes('choresDeferredMore')) day.functioning.push('choresDeferredMore');
+    saveTrackerDay(day);
+  }));
   const ownTimeKeyMap = { didWanted:'ownTimeDidWanted', intentionalRest:'ownTimeRest', shortWindow:'ownTimeShort', blocked:'ownTimeBlocked', responsibilities:'ownTimeResponsibilities', hardStart:'ownTimeHardStart', drifted:'ownTimeDrifted', noWindow:'ownTimeNoWindow' };
   document.querySelectorAll('[data-own-time]').forEach(btn => btn.addEventListener('click', () => {
     const day=normalizedTrackerDay(getTrackerDay(app.trackerDate,true));
@@ -1778,9 +1804,8 @@ function daySignals(day) {
   if(d.enjoyment==='high')out.push(['enjoyment-high','More enjoyment / spark']); if(d.enjoyment==='low')out.push(['enjoyment-low','Less enjoyment / spark']);
   d.changes.forEach(k=>out.push([`change-${k}`,TRACKER_CHANGE_LABELS[k]||k]));
   Object.entries(d.symptoms).filter(([,v])=>Number(v)>0).forEach(([k])=>out.push([`symptom-${k}`,TRACKER_SYMPTOM_LABELS[k]||k]));
-  if (d.chorePlanOutcome && d.chorePlanOutcome !== 'none') out.push([`chore-plan-${d.chorePlanOutcome}`, `Chores: ${TRACKER_PLAN_LABELS[d.chorePlanOutcome]||d.chorePlanOutcome}`]);
-  if (d.chorePlanReason) out.push([`chore-reason-${d.chorePlanReason}`, `Chore plan changed: ${TRACKER_PLAN_REASON_LABELS[d.chorePlanReason]||d.chorePlanReason}`]);
-  d.functioning.filter(k=>['choresHard','choresExtra','exercise','ownTimeDidWanted','ownTimeRest','ownTimeShort','ownTimeBlocked','ownTimeResponsibilities','ownTimeHardStart','ownTimeDrifted','ownTimeNoWindow'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  d.functioning.filter(k=>['choresHard','choresExtra','choresRoll','choresDraining','choresDeferredMore','exercise','ownTimeDidWanted','ownTimeRest','ownTimeShort','ownTimeBlocked','ownTimeResponsibilities','ownTimeHardStart','ownTimeDrifted','ownTimeNoWindow'].includes(k)).forEach(k=>out.push([`function-${k}`,TRACKER_FUNCTION_LABELS[k]||k]));
+  if (d.functioning.includes('choresDeferredMore') && d.choreDeferralReason) out.push([`chore-defer-reason-${d.choreDeferralReason}`, `Chore deferral: ${CHORE_DEFERRAL_REASON_LABELS[d.choreDeferralReason]||d.choreDeferralReason}`]);
   d.context.forEach(k=>out.push([`context-${k}`,TRACKER_CONTEXT_LABELS[k]||k]));
   if(d.bigEvents.length){
     out.push(['big-event-any','Big emotional event']);

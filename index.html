@@ -243,8 +243,8 @@
             </article>
 
             <article class="panel">
-              <div class="panel-heading"><div><p class="eyebrow">Daily life</p><h3>Follow-through, recovery & context</h3></div></div>
-              <p class="function-definition"><strong>Chore plan:</strong> use the final intentional plan for the day, including a reasonable revised plan. <strong>Your own time:</strong> only count discretionary time that you personally consider yours. Shared/hanging-out time does not need to count unless it felt like your own choice. These behavior signals are for patterns; they do not automatically make the day score better or worse.</p>
+              <div class="panel-heading"><div><p class="eyebrow">Daily life</p><h3>What stood out today?</h3></div></div>
+              <p class="function-definition"><strong>Chores:</strong> your chore app already tracks what was due, done, skipped, or rescheduled. Inner Compass only needs what <em>stood out</em> about doing chores that day. <strong>Your own time:</strong> only count discretionary time that you personally consider yours. Shared/hanging-out time does not need to count unless it felt like your own choice.</p>
 
               <div class="plan-grid">
                 <section class="plan-card personal-time-card">
@@ -262,27 +262,25 @@
                   <p class="own-time-example">Example: “Crochet didn’t fit the hour I had, Amazon reviews got blocked by tech issues, then I did chores” = short/awkward window + blocked/interrupted + responsibilities used the window.</p>
                 </section>
 
-                <section class="plan-card" data-plan-domain="chores">
-                  <div class="plan-card-heading"><div><span class="field-label">Chores</span><small>Use your chore app’s final plan for the day.</small></div></div>
-                  <div class="plan-outcome-grid" data-plan-outcome-group="chorePlanOutcome">
-                    <button type="button" data-plan-outcome="none">No chores planned</button>
-                    <button type="button" data-plan-outcome="met">Met today’s plan</button>
-                    <button type="button" data-plan-outcome="revisedMet">Met a reduced / rescheduled plan</button>
-                    <button type="button" data-plan-outcome="unmet">Left planned chores unfinished</button>
+                <section class="plan-card chore-standout-card">
+                  <div class="plan-card-heading"><div><span class="field-label">Chores</span><small>Only tap what felt noticeably different from normal. Leave blank when chores were just chores.</small></div></div>
+                  <div class="plan-extra-row chore-standout-grid">
+                    <button type="button" data-track-toggle="functioning" data-value="choresExtra">Did extra / got ahead</button>
+                    <button type="button" data-track-toggle="functioning" data-value="choresRoll">Got on a cleaning roll</button>
+                    <button type="button" data-track-toggle="functioning" data-value="choresHard">Hard to initiate</button>
+                    <button type="button" data-track-toggle="functioning" data-value="choresDraining">Felt unusually draining</button>
+                    <button type="button" class="wide-toggle" data-track-toggle="functioning" data-value="choresDeferredMore">Put off / skipped more than usual</button>
                   </div>
-                  <div class="plan-reason hidden" data-plan-reason-wrap="chores">
-                    <span>Why did the plan change?</span>
-                    <div class="mini-choice-row" data-plan-reason-group="chorePlanReason">
-                      <button type="button" data-plan-reason="logistics">Logistics / schedule</button>
-                      <button type="button" data-plan-reason="capacity">My motivation / energy / capacity</button>
-                      <button type="button" data-plan-reason="both">Both</button>
-                      <button type="button" data-plan-reason="other">Other</button>
+                  <div class="plan-reason hidden" id="choreDeferralReasonWrap">
+                    <span>Why mostly?</span>
+                    <div class="mini-choice-row" data-chore-deferral-reason-group>
+                      <button type="button" data-chore-deferral-reason="bandwidth">Didn’t have the bandwidth</button>
+                      <button type="button" data-chore-deferral-reason="logistics">Logistics / timing</button>
+                      <button type="button" data-chore-deferral-reason="choice">Simply chose not to</button>
+                      <button type="button" data-chore-deferral-reason="mixed">Mixed / other</button>
                     </div>
                   </div>
-                  <div class="plan-extra-row">
-                    <button type="button" data-track-toggle="functioning" data-value="choresExtra">Did extra chores</button>
-                    <button type="button" data-track-toggle="functioning" data-value="choresHard">Hard to initiate</button>
-                  </div>
+                  <p class="own-time-example">Examples: kitty litter on an ordinary day = leave blank. Cleaning three extra areas = extra/got ahead. Starting one chore and naturally continuing = cleaning roll.</p>
                 </section>
               </div>
 
