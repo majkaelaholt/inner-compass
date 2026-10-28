@@ -117,3 +117,16 @@ The **What should I do right now?** guide asks about available time, energy, men
 - Inner Compass now records only unusual chore experiences: extra/got ahead, cleaning roll, hard to initiate, unusually draining, and put off/skipped more than usual.
 - “Put off / skipped more than usual” can optionally record whether the main reason was bandwidth, logistics/timing, simply choosing not to, or mixed/other.
 - Historical plan-based chore data remains in old records but is no longer used as a current pattern signal.
+
+
+### v13 — clearer core-state ratings
+- Rewrote Motivation/Drive, Energy/Fuel, Capacity/Bandwidth, and Enjoyment/Spark so they describe lived state rather than productivity.
+- Added a collapsed cheat sheet with real-life examples, including low-drive/high-follow-through, low-energy vs low-capacity, social-overload, and enjoyment-vs-initiation examples.
+- Added an optional four-question “Help me decide” helper. It suggests the four core ratings and only writes them to the day if the user taps Apply.
+- Added “People / interactions felt like too much” as a score-neutral standout signal for lower social tolerance / bandwidth days.
+- Kept the existing score weights unchanged so improved data definitions can be evaluated before any scoring redesign.
+
+### v14 — retired Bearable importer
+- Removed the one-time Bearable CSV import option from Settings now that the migration is complete.
+- Removed the dormant CSV importer code while preserving all previously imported Bearable history and legacy labels.
+
